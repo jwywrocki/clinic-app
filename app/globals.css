@@ -1,0 +1,506 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 221.2 83.2% 53.3%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 84% 4.9%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 84% 4.9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 221.2 83.2% 53.3%;
+        --radius: 0.5rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: 'rlig' 1, 'calt' 1;
+    }
+    ul:not(nav ul, .rich-text-editor ul) {
+        list-style-type: disc;
+        padding-left: 1.25rem;
+    }
+    ol:not(.rich-text-editor ol) {
+        list-style-type: decimal;
+        padding-left: 1.25rem;
+    }
+}
+
+/* Rich Text Editor Global Styles - Ensure list visibility */
+.rich-text-editor ul {
+    list-style-type: disc !important;
+    margin-left: 1.5rem !important;
+    padding-left: 0.5rem !important;
+}
+
+.rich-text-editor ol {
+    list-style-type: decimal !important;
+    margin-left: 1.5rem !important;
+    padding-left: 0.5rem !important;
+}
+
+.rich-text-editor ul ul {
+    list-style-type: circle !important;
+}
+
+.rich-text-editor ul ul ul {
+    list-style-type: square !important;
+}
+
+.rich-text-editor ol ol {
+    list-style-type: lower-alpha !important;
+}
+
+.rich-text-editor ol ol ol {
+    list-style-type: lower-roman !important;
+}
+
+.rich-text-editor li {
+    margin-bottom: 0.25rem !important;
+    line-height: 1.5 !important;
+    display: list-item !important;
+}
+
+.rich-text-editor p {
+    margin-bottom: 0.5rem !important;
+    line-height: 1.6 !important;
+}
+
+.rich-text-editor a {
+    color: #3b82f6 !important;
+    text-decoration: underline !important;
+}
+
+.rich-text-editor table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 1rem 0 !important;
+}
+
+.rich-text-editor th,
+.rich-text-editor td {
+    border: 1px solid #d1d5db !important;
+    padding: 0.5rem !important;
+}
+
+.rich-text-editor th {
+    background-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+}
+
+.rich-text-editor img {
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 0.5rem 0 !important;
+}
+
+/* High Contrast Mode - Medical Grade Accessibility */
+.high-contrast,
+[data-theme='high-contrast'] {
+    /* Core colors for maximum contrast */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Primary colors - Medical standard yellow for visibility */
+    --primary: 60 100% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    /* Secondary and accent colors */
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 85%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Status colors with high contrast */
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Interface elements */
+    --border: 60 100% 50%;
+    --input: 0 0% 15%;
+    --ring: 60 100% 50%;
+}
+
+/* High contrast specific overrides */
+.high-contrast * {
+    border-color: hsl(var(--border)) !important;
+}
+
+.high-contrast .bg-gray-200,
+.high-contrast .bg-blue-100,
+.high-contrast .bg-blue-800,
+.high-contrast .bg-blue-900 {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+.high-contrast .hover\:bg-blue-700:hover {
+    background-color: #ffff00 !important;
+    color: #000000 !important;
+    border-color: #ffff00 !important;
+}
+
+.high-contrast .text-green-600,
+.high-contrast .text-gray-500,
+.high-contrast .text-gray-700,
+.high-contrast .text-gray-800,
+.high-contrast .text-blue-300,
+.high-contrast .text-blue-400,
+.high-contrast .text-blue-600,
+.high-contrast .text-blue-800 {
+    color: #ffff00 !important;
+}
+
+.high-contrast .text-gray-900 {
+    color: #ffffff !important;
+}
+
+.high-contrast .shadow-lg,
+.high-contrast .border-blue-600,
+.high-contrast .border-blue-700,
+.high-contrast .border-blue-200 {
+    border-color: #ffff00 !important;
+}
+
+.high-contrast .bg-green-100 {
+    background-color: #00ff00 !important;
+    color: #000000 !important;
+}
+
+.high-contrast .text-green-800 {
+    color: #000000 !important;
+}
+
+.high-contrast .bg-red-100,
+.high-contrast .bg-red-600 {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+.high-contrast .text-red-600,
+.high-contrast .text-red-800 {
+    color: #ffffff !important;
+}
+
+.high-contrast .bg-yellow-100 {
+    background-color: #ffff00 !important;
+    color: #000000 !important;
+}
+
+.high-contrast .text-yellow-800 {
+    color: #000000 !important;
+}
+
+.high-contrast .bg-white,
+.high-contrast .bg-blue-500,
+.high-contrast .bg-blue-600,
+.high-contrast .bg-gray-50,
+.high-contrast .bg-gray-100,
+.high-contrast .bg-gray-900 {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+}
+
+.high-contrast .text-gray-600,
+.high-contrast .text-gray-700,
+.high-contrast .text-gray-300 {
+    color: #ffffff !important;
+}
+
+.high-contrast .shadow-lg,
+.high-contrast .shadow-xl,
+.high-contrast .shadow-2xl {
+    box-shadow: 0 0 0 3px #ffff00 !important;
+}
+
+.high-contrast .bg-gradient-to-br,
+.high-contrast .bg-gradient-to-r {
+    background: #000000 !important;
+}
+
+/* Enhanced focus indicators for high contrast */
+.high-contrast *:focus-visible {
+    outline: 4px solid #ffff00 !important;
+    outline-offset: 2px !important;
+}
+
+.high-contrast .focus\:ring-4:focus,
+.high-contrast .focus\:ring-blue-300:focus {
+    box-shadow: 0 0 0 4px #ffff00 !important;
+}
+
+/* Interactive elements in high contrast */
+.high-contrast button,
+.high-contrast input,
+.high-contrast textarea,
+.high-contrast select {
+    border: 3px solid #ffff00 !important;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+.high-contrast button:hover {
+    background-color: #ffff00 !important;
+    color: #000000 !important;
+}
+
+.high-contrast button:disabled {
+    background-color: #333333 !important;
+    color: #666666 !important;
+    border-color: #666666 !important;
+}
+
+/* Table styling for high contrast */
+.high-contrast table {
+    border: 3px solid #ffffff !important;
+}
+
+.high-contrast th,
+.high-contrast td {
+    border: 2px solid #ffffff !important;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+/* Card and container styling */
+.high-contrast .border-2 {
+    border-width: 3px !important;
+}
+
+.high-contrast .border-4 {
+    border-width: 4px !important;
+}
+
+/* Enhanced focus indicators for accessibility */
+*:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .reduced-motion *,
+    .reduced-motion *::before,
+    .reduced-motion *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* Ensure minimum touch target size */
+button,
+input[type='button'],
+input[type='submit'],
+input[type='reset'],
+a {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+button[role='switch'] {
+    min-height: 26px;
+    min-width: 26px;
+}
+
+/* Focus management for modals and overlays */
+[role='dialog'],
+[role='alertdialog'] {
+    outline: none;
+}
+
+/* Responsive font sizing */
+html {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    html {
+        font-size: 13px;
+    }
+}
+
+/* Smooth scroll animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animation classes */
+.animate-fade-in-up {
+    animation: fadeInUp 0.7s ease-out forwards;
+}
+
+.animate-fade-in-left {
+    animation: fadeInLeft 0.7s ease-out forwards;
+}
+
+.animate-fade-in-right {
+    animation: fadeInRight 0.7s ease-out forwards;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.5s ease-out forwards;
+}
+
+.animate-slide-in-up {
+    animation: slideInUp 0.8s ease-out forwards;
+}
+
+/* Print styles for accessibility */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    a[href]:after {
+        content: ' (' attr(href) ')';
+    }
+
+    .high-contrast {
+        --background: 255 255 255;
+        --foreground: 0 0 0;
+    }
+
+    * {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+    }
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.high-contrast ::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+.high-contrast ::-webkit-scrollbar-thumb {
+    background: #ffffff;
+}
+
+.high-contrast ::-webkit-scrollbar-thumb:hover {
+    background: #ffff00;
+}
