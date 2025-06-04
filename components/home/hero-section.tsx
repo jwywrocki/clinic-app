@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { ArrowRight, Phone, MapPin, Clock, Mail } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { getFormattedContactInfo } from '@/lib/database';
 import { stripHtmlTags, sanitizePhoneNumberHtml } from '@/lib/html-sanitizer';
@@ -63,7 +64,8 @@ export function HeroSection() {
                 <div className="grid lg:grid-cols-2 gap-8 items-center">
                     {/* Left Column - Main Content */}
                     <AnimatedSection animation="fadeInLeft">
-                        <div className="space-y-6">
+                        <Image src="/images/nfz_logo.png" alt="Logo Nfz" width={58} height={58} />
+                        <div className="space-y-6 mt-4">
                             <div className="space-y-3">
                                 <div className="inline-flex items-center px-3 py-1 bg-blue-600/20 backdrop-blur-sm rounded-full border border-blue-400/30">
                                     <span className="text-blue-200 text-sm font-medium">SŁUŻYMY SPOŁECZNOŚCI OD 1995 ROKU</span>

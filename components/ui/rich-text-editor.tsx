@@ -6,7 +6,22 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bold, Italic, Underline, List, ListOrdered, Table, Palette, ImageIcon, Link, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
+import {
+    Bold,
+    Italic,
+    Underline,
+    List,
+    ListOrdered,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    AlignJustify,
+    Table,
+    ImageIcon,
+    Link as LinkIcon, // Renamed to avoid conflict with HTML Link element
+    Palette,
+    Paperclip, // Added for file uploads
+} from 'lucide-react';
 
 interface RichTextEditorProps {
     value: string;
@@ -35,9 +50,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
     const [showTableDialog, setShowTableDialog] = useState(false);
     const [showImageDialog, setShowImageDialog] = useState(false);
     const [showLinkDialog, setShowLinkDialog] = useState(false);
+    const [showFileDialog, setShowFileDialog] = useState(false); // New state for file dialog
     const [imageUrl, setImageUrl] = useState('');
     const [imageAlt, setImageAlt] = useState('');
+    const [imageSourceType, setImageSourceType] = useState<'url' | 'upload'>('url'); // For image dialog
+    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null); // For image dialog
     const [currentLinkUrl, setCurrentLinkUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
     const [tableRows, setTableRows] = useState(3);
     const [tableCols, setTableCols] = useState(3);
     const [currentColor, setCurrentColor] = useState('#000000');
@@ -67,18 +86,6 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
             alignRight: document.queryCommandState('justifyRight'),
             alignJustify: document.queryCommandState('justifyFull'),
         });
-    };
-
-    const getSelectedParentElement = () => {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return null;
-
-        let node = selection.getRangeAt(0).commonAncestorContainer;
-        while (node && node.nodeType !== Node.ELEMENT_NODE) {
-            if (!node.parentNode) break;
-            node = node.parentNode;
-        }
-        return node as Element;
     };
 
     const exec = (command: string, value?: string) => {
@@ -225,7 +232,72 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
         insertHtmlAtCursor(imageHtml);
         setImageUrl('');
         setImageAlt('');
+        setSelectedImageFile(null);
+        setImageSourceType('url');
         setShowImageDialog(false);
+    };
+
+    const insertFileLink = (fileName: string, fileUrl: string) => {
+        if (!fileName || !fileUrl) return;
+        const fileHtml = `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${fileName}</a>`;
+        insertHtmlAtCursor(fileHtml);
+        setShowFileDialog(false);
+        setSelectedFile(null);
+    };
+
+    const handleFileUpload = async () => {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('File upload failed');
+            }
+
+            const data = await response.json();
+            if (data.filePath) {
+                insertFileLink(selectedFile.name, data.filePath);
+            } else {
+                console.error('File path not returned from server');
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+        }
+    };
+
+    const handleImageFileUpload = async () => {
+        if (!selectedImageFile) return;
+
+        const formData = new FormData();
+        formData.append('file', selectedImageFile);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                console.error('Image upload failed', response.statusText);
+                throw new Error('Image upload failed');
+            }
+
+            const data = await response.json();
+            if (data.filePath) {
+                insertImage(data.filePath);
+            } else {
+                console.error('File path not returned from server for image upload');
+            }
+        } catch (error) {
+            console.error('Error uploading image file:', error);
+        }
     };
 
     const insertTable = (rows: number, cols: number) => {
@@ -408,6 +480,21 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                                 const selection = window.getSelection();
                                 if (selection && selection.rangeCount > 0) {
                                     savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+                                }
+                                setShowFileDialog(true);
+                            }}
+                            title="Wstaw plik"
+                        >
+                            <Paperclip className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                const selection = window.getSelection();
+                                if (selection && selection.rangeCount > 0) {
+                                    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
                                     const selectedText = selection.toString().trim();
                                     if (selectedText.startsWith('http://') || selectedText.startsWith('https://')) {
                                         setCurrentLinkUrl(selectedText);
@@ -421,7 +508,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                             }}
                             title="Wstaw hiperłącze"
                         >
-                            <Link className="h-4 w-4" />
+                            <LinkIcon className="h-4 w-4" />
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => setShowColorPicker(true)} title="Kolor tekstu" className="relative">
                             <Palette className="h-4 w-4" />
@@ -517,25 +604,56 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
             </Dialog>
 
             {/* Image Dialog */}
-            <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+            <Dialog
+                open={showImageDialog}
+                onOpenChange={(isOpen) => {
+                    setShowImageDialog(isOpen);
+                    if (!isOpen) {
+                        setImageUrl('');
+                        setImageAlt('');
+                        setSelectedImageFile(null);
+                        setImageSourceType('url');
+                    }
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Wstaw obraz</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="image-url" className="text-right">
-                                URL obrazu
-                            </Label>
-                            <Input id="image-url" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="col-span-3" />
+                        <div className="flex items-center space-x-2 mb-4">
+                            <input type="radio" id="image-source-url" name="imageSource" value="url" checked={imageSourceType === 'url'} onChange={() => setImageSourceType('url')} />
+                            <Label htmlFor="image-source-url">Z adresu URL</Label>
+                            <input type="radio" id="image-source-upload" name="imageSource" value="upload" checked={imageSourceType === 'upload'} onChange={() => setImageSourceType('upload')} />
+                            <Label htmlFor="image-source-upload">Prześlij plik</Label>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
+
+                        {imageSourceType === 'url' && (
+                            <div className="col-span-4 items-center gap-4">
+                                <Label htmlFor="image-url" className="text-right">
+                                    URL obrazu
+                                </Label>
+                                <Input id="image-url" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="col-span-3" />
+                            </div>
+                        )}
+
+                        {imageSourceType === 'upload' && (
+                            <div className="col-span-4 items-center gap-4">
+                                <Label htmlFor="image-file" className="text-right">
+                                    Plik obrazu
+                                </Label>
+                                <Input id="image-file" type="file" accept="image/*" onChange={(e) => setSelectedImageFile(e.target.files ? e.target.files[0] : null)} className="col-span-3" />
+                            </div>
+                        )}
+
+                        <div className="col-span-4 items-center gap-4">
                             <Label htmlFor="image-alt" className="text-right">
                                 Tekst alternatywny
                             </Label>
                             <Input id="image-alt" type="text" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Opis obrazu" className="col-span-3" />
                         </div>
-                        {imageUrl && (
+
+                        {imageSourceType === 'url' && imageUrl && (
                             <div className="col-span-4">
                                 <p className="text-sm text-gray-500 mb-2">Podgląd:</p>
                                 <img
@@ -550,12 +668,72 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                                 />
                             </div>
                         )}
+                        {imageSourceType === 'upload' && selectedImageFile && (
+                            <div className="col-span-4">
+                                <p className="text-sm text-gray-500 mb-2">Podgląd:</p>
+                                <img src={URL.createObjectURL(selectedImageFile)} alt={imageAlt} className="max-w-full h-auto max-h-40 rounded border" />
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowImageDialog(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowImageDialog(false);
+                                setImageUrl('');
+                                setImageAlt('');
+                                setSelectedImageFile(null);
+                                setImageSourceType('url');
+                            }}
+                        >
                             Anuluj
                         </Button>
-                        <Button onClick={() => insertImage(imageUrl)} disabled={!imageUrl.trim()}>
+                        <Button
+                            onClick={() => {
+                                if (imageSourceType === 'url') {
+                                    insertImage(imageUrl);
+                                } else if (imageSourceType === 'upload') {
+                                    handleImageFileUpload();
+                                }
+                            }}
+                            disabled={imageSourceType === 'url' ? !imageUrl.trim() : !selectedImageFile}
+                        >
+                            Wstaw
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* File Dialog */}
+            <Dialog open={showFileDialog} onOpenChange={setShowFileDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Wstaw plik</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="file-upload" className="text-right">
+                                Plik
+                            </Label>
+                            <Input id="file-upload" type="file" onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)} className="col-span-3" />
+                        </div>
+                        {selectedFile && (
+                            <div className="col-span-4">
+                                <p className="text-sm text-gray-500">Wybrany plik: {selectedFile.name}</p>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowFileDialog(false);
+                                setSelectedFile(null);
+                            }}
+                        >
+                            Anuluj
+                        </Button>
+                        <Button onClick={handleFileUpload} disabled={!selectedFile}>
                             Wstaw
                         </Button>
                     </DialogFooter>
