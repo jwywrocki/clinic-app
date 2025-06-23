@@ -6,23 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Users, Award, Shield, Star, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '@/lib/supabase';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
+import { AnimatedGroup } from '@/components/ui/animated-group';
+import { FadeIn, SlideIn } from '@/components/ui/animation-helpers';
 import { SkipLink } from '@/components/ui/skip-link';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-let supabase: any = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-    try {
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
-    } catch (error) {
-        console.error('Failed to initialize Supabase client:', error);
-    }
-}
 
 interface PageContent {
     id: string;
@@ -36,7 +25,6 @@ interface TeamMember {
     id: string;
     first_name: string;
     last_name: string;
-    role: string;
     specialization: string;
     bio?: string;
 }
@@ -50,6 +38,7 @@ export default function AboutPage() {
         const fetchPageData = async () => {
             setLoading(true);
             try {
+                const supabase = createSupabaseClient();
                 if (!supabase) {
                     console.warn('Supabase client not initialized for About page.');
                     setLoading(false);
@@ -120,46 +109,46 @@ export default function AboutPage() {
     return (
         <LayoutWrapper>
             <SkipLink href="#main-content">Przejdź do głównej treści</SkipLink>
-            <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+            <div id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
                 {/* Hero Section */}
-                <AnimatedSection animation="fadeInUp">
-                    <section className="py-20">
-                        <div className="container mx-auto px-4">
-                            <div className="grid lg:grid-cols-2 gap-12 items-center">
-                                <div>
-                                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 mb-4">O Nas</Badge>
-                                    <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6">{pageContent?.title || 'Poznaj SPZOZ GOZ Łopuszno'}</h1>
-                                    <div
-                                        className="text-xl text-gray-600 leading-relaxed mb-8 prose prose-xl max-w-none"
-                                        dangerouslySetInnerHTML={{
-                                            __html:
-                                                pageContent?.content ||
-                                                'Jesteśmy Samodzielnym Publicznym Zakładem Opieki Zdrowotnej, Gminnym Ośrodkiem Zdrowia w Łopusznie. Naszą misją jest zapewnienie kompleksowej i profesjonalnej opieki medycznej dla mieszkańców gminy Łopuszno i okolic.',
-                                        }}
-                                    />
-                                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-                                        <Link href="/kontakt">
-                                            <Calendar className="h-5 w-5 mr-2" />
-                                            Skontaktuj się z nami
-                                        </Link>
-                                    </Button>
-                                </div>
+                <section className="py-20">
+                    <div className="container mx-auto px-4">
+                        <div className="grid lg:grid-cols-2 gap-12 items-center">
+                            <FadeIn direction="left" delay={0}>
+                                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 mb-4">O Nas</Badge>
+                                <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6">{pageContent?.title || 'Poznaj SPZOZ GOZ Łopuszno'}</h1>
+                                <div
+                                    className="text-xl text-gray-600 leading-relaxed mb-8 prose prose-xl max-w-none"
+                                    dangerouslySetInnerHTML={{
+                                        __html:
+                                            pageContent?.content ||
+                                            'Jesteśmy Samodzielnym Publicznym Zakładem Opieki Zdrowotnej, Gminnym Ośrodkiem Zdrowia w Łopusznie. Naszą misją jest zapewnienie kompleksowej i profesjonalnej opieki medycznej dla mieszkańców gminy Łopuszno i okolic.',
+                                    }}
+                                />
+                                <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
+                                    <Link href="/kontakt">
+                                        <Calendar className="h-5 w-5 mr-2" />
+                                        Skontaktuj się z nami
+                                    </Link>
+                                </Button>
+                            </FadeIn>
+                            <FadeIn direction="right" delay={200}>
                                 <div className="relative">
-                                    <img src="/placeholder.svg?height=500&width=600" alt="Budynek ośrodka zdrowia w Łopusznie" className="rounded-2xl shadow-2xl" />
+                                    <img src="/images/baner.webp?height=500&width=600" alt="Budynek ośrodka zdrowia w Łopusznie" className="rounded-2xl shadow-2xl" />
                                 </div>
-                            </div>
+                            </FadeIn>
                         </div>
-                    </section>
-                </AnimatedSection>
+                    </div>
+                </section>
 
                 {/* Our Story */}
-                <AnimatedSection animation="fadeInUp" delay={200}>
+                <FadeIn direction="up" delay={0} threshold={0.2}>
                     <section className="py-20 bg-white">
                         <div className="container mx-auto px-4">
                             <div className="max-w-4xl mx-auto text-center">
                                 <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-8">Nasza Historia</h2>
                                 <p className="text-lg text-gray-600 leading-relaxed mb-8">
-                                    Założony w 1995 roku, SPZOZ GOZ w Łopusznie służy lokalnej społeczności z oddaniem i profesjonalizmem od ponad ćwierćwiecza. Zaczynaliśmy jako niewielka
+                                    Założony w 1998 roku, SPZOZ GOZ w Łopusznie służy lokalnej społeczności z oddaniem i profesjonalizmem od ponad ćwierćwiecza. Zaczynaliśmy jako niewielka
                                     przychodnia, a dziś jesteśmy nowoczesnym ośrodkiem zdrowia, oferującym szeroki zakres usług medycznych. Nasze podstawowe wartości pozostały niezmienne: zapewnienie
                                     współczującej, wysokiej jakości opieki medycznej każdemu pacjentowi.
                                 </p>
@@ -170,62 +159,62 @@ export default function AboutPage() {
                             </div>
                         </div>
                     </section>
-                </AnimatedSection>
+                </FadeIn>
 
                 {/* Our Values */}
-                <AnimatedSection animation="fadeInUp" delay={300}>
-                    <section className="py-20 bg-gradient-to-r from-blue-50 to-blue-100">
-                        <div className="container mx-auto px-4">
+                <section className="py-20 bg-gradient-to-r from-blue-50 to-blue-100">
+                    <div className="container mx-auto px-4">
+                        <FadeIn direction="up" delay={0} threshold={0.2}>
                             <div className="text-center mb-16">
                                 <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Nasze Wartości</h2>
                                 <p className="text-xl text-gray-600">Zasady, którymi kierujemy się w codziennej pracy</p>
                             </div>
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                                {values.map((value, index) => (
-                                    <Card key={index} className="text-center border-0 shadow-lg bg-white">
-                                        <CardHeader>
-                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                <value.icon className="h-8 w-8 text-white" />
-                                            </div>
-                                            <CardTitle className="text-xl font-bold text-gray-900">{value.title}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-gray-600 leading-relaxed">{value.description}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-                </AnimatedSection>
+                        </FadeIn>
+                        <AnimatedGroup animation="scaleIn" staggerDelay={150} className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {values.map((value, index) => (
+                                <Card key={index} className="text-center border-0 shadow-lg bg-white">
+                                    <CardHeader>
+                                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                            <value.icon className="h-8 w-8 text-white" />
+                                        </div>
+                                        <CardTitle className="text-xl font-bold text-gray-900">{value.title}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-gray-600 leading-relaxed">{value.description}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </AnimatedGroup>
+                    </div>
+                </section>
 
                 {/* Our Team */}
-                <AnimatedSection animation="fadeInUp" delay={400}>
-                    <section className="py-20 bg-white">
-                        <div className="container mx-auto px-4">
+                <section className="py-20 bg-white">
+                    <div className="container mx-auto px-4">
+                        <FadeIn direction="up" delay={0} threshold={0.2}>
                             <div className="text-center mb-16">
                                 <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Nasz Zespół</h2>
                                 <p className="text-xl text-gray-600">Doświadczeni specjaliści dbający o Twoje zdrowie</p>
                             </div>
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {teamMembers.map((member, index) => (
-                                    <Card key={member.id || index} className="text-center border-0 shadow-lg overflow-hidden">
-                                        <CardHeader>
-                                            <CardTitle className="text-xl font-bold text-gray-900">{`${member.first_name} ${member.last_name}`}</CardTitle>
-                                            <p className="text-gray-600">Specjalizacja: {member.specialization}</p>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-gray-600">{member.bio}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-                </AnimatedSection>
+                        </FadeIn>
+                        <AnimatedGroup animation="fadeInUp" staggerDelay={200} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {teamMembers.map((member, index) => (
+                                <Card key={member.id || index} className="text-center border-0 shadow-lg overflow-hidden">
+                                    <CardHeader>
+                                        <CardTitle className="text-xl font-bold text-gray-900">{`${member.first_name} ${member.last_name}`}</CardTitle>
+                                        <p className="text-gray-600">Specjalizacja: {member.specialization}</p>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-gray-600">{member.bio}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </AnimatedGroup>
+                    </div>
+                </section>
 
                 {/* CTA Section */}
-                <AnimatedSection animation="fadeInUp" delay={500}>
+                <FadeIn direction="up" delay={0} threshold={0.3}>
                     <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800">
                         <div className="container mx-auto px-4 text-center">
                             <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">Doświadcz Różnicy w SPZOZ GOZ Łopuszno</h2>
@@ -238,8 +227,8 @@ export default function AboutPage() {
                             </Button>
                         </div>
                     </section>
-                </AnimatedSection>
-            </main>
+                </FadeIn>
+            </div>
         </LayoutWrapper>
     );
 }

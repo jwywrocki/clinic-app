@@ -10,14 +10,41 @@ interface AnimatedSectionProps extends React.HTMLAttributes<HTMLElement> {
     delay?: number;
     className?: string;
     as?: ElementType;
+    threshold?: number;
+    triggerOnce?: boolean;
+    disabled?: boolean;
 }
 
 export const AnimatedSection = forwardRef(function AnimatedSection(
-    { children, animation = 'fadeInUp', delay = 0, className = '', as: Tag = 'div', ...rest }: AnimatedSectionProps,
+    { children, animation = 'fadeInUp', delay = 0, className = '', as: Tag = 'div', threshold = 0.1, triggerOnce = true, disabled = false, ...rest }: AnimatedSectionProps,
     ref: Ref<HTMLElement>
 ) {
-    const { elementRef, isVisible } = useScrollAnimation({ delay, triggerOnce: true });
+    const { elementRef, isVisible, hasTriggered } = useScrollAnimation({
+        delay,
+        triggerOnce,
+        threshold,
+        rootMargin: '0px 0px -80px 0px',
+    });
+
     const variant = animationVariants[animation] || animationVariants.fadeInUp;
+
+    // If disabled, don't apply animations
+    if (disabled) {
+        return (
+            <Tag ref={ref} className={className} {...rest}>
+                {children}
+            </Tag>
+        );
+    }
+
+    // Get current animation classes
+    const getAnimationClasses = () => {
+        if (isVisible) {
+            return `${variant.animate} ${variant.transition}`;
+        } else {
+            return `${variant.initial} ${variant.transition}`;
+        }
+    };
 
     return (
         <Tag
@@ -26,7 +53,10 @@ export const AnimatedSection = forwardRef(function AnimatedSection(
                 if (typeof ref === 'function') ref(node);
                 else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
             }}
-            className={`${variant.initial} ${isVisible ? variant.animate : ''} ${variant.transition} ${className}`}
+            className={`${getAnimationClasses()} ${className}`}
+            style={{
+                willChange: isVisible ? 'auto' : 'transform, opacity',
+            }}
             {...rest}
         >
             {children}

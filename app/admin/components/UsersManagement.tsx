@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { User } from '../types';
+import { Edit, Trash2 } from 'lucide-react';
+import { User } from '@/lib/types/users';
 
 interface UsersManagementProps {
     users: User[];
@@ -127,7 +128,7 @@ export function UsersManagement({ users, roles, currentUser, onSave, onDelete }:
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {users.map((user) => (
-                                        <tr key={user.id}>
+                                        <tr key={user.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.username}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 <div className="flex flex-wrap gap-1">
@@ -147,18 +148,32 @@ export function UsersManagement({ users, roles, currentUser, onSave, onDelete }:
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.last_login ? new Date(user.last_login).toLocaleDateString('pl-PL') : 'Nigdy'}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <Button variant="outline" size="sm" onClick={() => setEditingUser(user)}>
-                                                    Edytuj
+                                                <Button variant="outline" size="sm" onClick={() => setEditingUser(user)} disabled={user.username === 'jaqb'} title="Edytuj użytkownika">
+                                                    <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="destructive" size="sm" onClick={() => onDelete('users', user.id)} disabled={user.username === currentUser?.username}>
-                                                    Usuń
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => onDelete('users', user.id)}
+                                                    disabled={user.username === currentUser?.username || user.username === 'jaqb'}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:text-gray-400 disabled:hover:bg-transparent"
+                                                    title="Usuń użytkownika"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {users.length === 0 && <p className="text-center text-gray-500 py-4">Brak użytkowników.</p>}
+                            {users.length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="text-gray-500">
+                                        <h3 className="text-lg font-medium mb-2">Brak użytkowników</h3>
+                                        <p className="text-sm">Rozpocznij od dodania pierwszego użytkownika.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>

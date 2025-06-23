@@ -32,7 +32,7 @@ export default async function NewsPage() {
 
     return (
         <LayoutWrapper>
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
                 <div className="container mx-auto px-4 py-16">
                     <AnimatedSection animation="fadeInUp">
                         <div className="text-center mb-16">
@@ -105,7 +105,7 @@ export default async function NewsPage() {
                         )}
                     </div>
                 </div>
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

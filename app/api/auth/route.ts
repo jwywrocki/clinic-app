@@ -38,16 +38,13 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Nieprawidłowe dane logowania' }, { status: 401 });
             }
 
-            // Usuń pole password_hash z usera przed zapisaniem do sesji
             const { password_hash, ...userSafe } = user;
 
-            // Update last_login timestamp
             try {
                 const { error: updateError } = await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
 
                 if (updateError) {
                     console.error('Error updating last_login:', updateError);
-                    // Decide if this error should prevent login or just be logged
                 }
             } catch (e) {
                 console.error('Exception during last_login update:', e);
@@ -62,13 +59,13 @@ export async function POST(request: NextRequest) {
                 'session',
                 JSON.stringify({
                     ...userSafe,
-                    exp: Date.now() + 10 * 60 * 1000, // Sesja na 10 minut
+                    exp: Date.now() + 10 * 60 * 1000,
                 }),
                 {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
                     sameSite: 'strict',
-                    maxAge: 10 * 60, // 10 minut
+                    maxAge: 10 * 60, // 10 min
                     path: '/',
                 }
             );

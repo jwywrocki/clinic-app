@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getPageBySlug } from '@/lib/database';
+import { getPublishedSurveyForPage } from '@/lib/surveys-db';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
+import { SurveyWidget } from '@/components/survey-widget';
 
 interface PageProps {
     params: {
@@ -24,9 +26,19 @@ export default async function DynamicPage({ params }: PageProps) {
         notFound();
     }
 
+    // Pre-fetch survey data server-side if page has survey
+    let surveyData = null;
+    if (page.survey_id) {
+        try {
+            surveyData = await getPublishedSurveyForPage(page.survey_id);
+        } catch (error) {
+            console.error('Error pre-fetching survey:', error);
+        }
+    }
+
     return (
         <LayoutWrapper>
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
                 <div className="container mx-auto px-4 py-16">
                     <AnimatedSection animation="fadeInUp">
                         <div className="max-w-7xl mx-auto">
@@ -42,10 +54,18 @@ export default async function DynamicPage({ params }: PageProps) {
                                     </div>
                                 </AnimatedSection>
                             )}
+
+                            {page.survey_id && (
+                                <AnimatedSection animation="fadeInUp" delay={400}>
+                                    <div className="mt-8">
+                                        <SurveyWidget surveyId={page.survey_id} preloadedSurvey={surveyData} />
+                                    </div>
+                                </AnimatedSection>
+                            )}
                         </div>
                     </AnimatedSection>
                 </div>
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

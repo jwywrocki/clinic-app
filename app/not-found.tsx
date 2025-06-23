@@ -9,7 +9,7 @@ import { Home, Search, ArrowLeft } from 'lucide-react';
 export default function NotFound() {
     return (
         <LayoutWrapper>
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
                 <div className="container mx-auto px-4 py-16">
                     <AnimatedSection animation="fadeInUp">
                         <div className="max-w-2xl mx-auto text-center">
@@ -93,7 +93,7 @@ export default function NotFound() {
                         </div>
                     </AnimatedSection>
                 </div>
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

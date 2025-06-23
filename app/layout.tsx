@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AccessibilityProvider } from '@/hooks/use-accessibility';
+import { getSiteSettings, generateSchemaOrgStructuredData } from '@/lib/metadata';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,60 +36,28 @@ export const viewport = {
     initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    // Get site settings for Schema.org
+    const settings = await getSiteSettings();
+    const schemaData = generateSchemaOrgStructuredData(settings);
+
     return (
-        <html lang="pl" suppressHydrationWarning>
+        <html lang={settings.meta_language || 'pl'} suppressHydrationWarning>
             <head>
                 <meta name="color-scheme" content="light" />
                 <meta name="theme-color" content="#2563eb" />
-                <link rel="icon" href="/favicon.ico" />
                 {/* Add WCAG 2.1 compliance meta tags */}
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
                 <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify({
-                            '@context': 'https://schema.org',
-                            '@type': 'MedicalOrganization',
-                            name: 'Samodzielny Publiczny Zakład Opieki Zdrowotnej Gminny Ośrodek Zdrowia w Łopusznie',
-                            alternateName: 'SPZOZ GOZ Łopuszno',
-                            description: 'Profesjonalna opieka zdrowotna w sercu Łopuszna',
-                            url: 'http://www.gozlopuszno.pl/',
-                            telephone: '+48 41 391 40 27',
-                            email: 'rejestracja@gozlopuszno.pl',
-                            address: {
-                                '@type': 'PostalAddress',
-                                streetAddress: 'ul. Strażacka 10',
-                                addressLocality: 'Łopuszno',
-                                postalCode: '26-070',
-                                addressCountry: 'PL',
-                            },
-                            openingHours: ['Mo-Fr 07:00-19:00', 'Sa 08:00-14:00'],
-                            medicalSpecialty: ['Family Medicine', 'Cardiology', 'Diabetology', 'Pediatrics', 'Emergency Medicine'],
-                            hasOfferCatalog: {
-                                '@type': 'OfferCatalog',
-                                name: 'Usługi medyczne',
-                                itemListElement: [
-                                    {
-                                        '@type': 'Offer',
-                                        itemOffered: {
-                                            '@type': 'MedicalProcedure',
-                                            name: 'Medycyna rodzinna',
-                                        },
-                                    },
-                                    {
-                                        '@type': 'Offer',
-                                        itemOffered: {
-                                            '@type': 'MedicalProcedure',
-                                            name: 'Konsultacje specjalistyczne',
-                                        },
-                                    },
-                                ],
-                            },
-                        }),
-                    }}
-                />
+                {/* Schema.org structured data */}
+                {schemaData && (
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{
+                            __html: JSON.stringify(schemaData, null, 2),
+                        }}
+                    />
+                )}
             </head>
             <body className={inter.className} suppressHydrationWarning>
                 <AccessibilityProvider>{children}</AccessibilityProvider>

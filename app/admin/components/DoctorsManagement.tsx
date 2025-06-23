@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Doctor } from '../types';
+import { Edit, Trash2 } from 'lucide-react';
+import { Doctor } from '@/lib/types/doctors';
 
 interface DoctorsManagementProps {
     doctors: Doctor[];
@@ -127,8 +128,10 @@ export function DoctorsManagement({ doctors, onSave, onDelete }: DoctorsManageme
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {doctors.map((doctor) => (
-                                        <tr key={doctor.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{`Dr. ${doctor.first_name} ${doctor.last_name}`}</td>
+                                        <tr key={doctor.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                Dr. {doctor.first_name} {doctor.last_name}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doctor.specialization}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <Badge variant={doctor.is_active ? 'default' : 'secondary'} className={doctor.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
@@ -136,18 +139,31 @@ export function DoctorsManagement({ doctors, onSave, onDelete }: DoctorsManageme
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <Button variant="outline" size="sm" onClick={() => setEditingDoctor(doctor)}>
-                                                    Edytuj
+                                                <Button variant="outline" size="sm" onClick={() => setEditingDoctor(doctor)} title="Edytuj lekarza">
+                                                    <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="destructive" size="sm" onClick={() => onDelete('doctors', doctor.id)}>
-                                                    Usuń
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => onDelete('doctors', doctor.id)}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    title="Usuń lekarza"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {doctors.length === 0 && <p className="text-center text-gray-500 py-4">Brak lekarzy.</p>}
+                            {doctors.length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="text-gray-500">
+                                        <h3 className="text-lg font-medium mb-2">Brak lekarzy</h3>
+                                        <p className="text-sm">Rozpocznij od dodania pierwszego lekarza.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>

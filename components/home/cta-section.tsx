@@ -25,10 +25,8 @@ export function CtaSection() {
         fetchData();
     }, []);
 
-    // Prioritize featured contacts for display
-    const displayContacts = contactInfo?.contactGroups?.filter((g) => g.featured).flatMap((g) => g.contact_details.map((d) => ({ ...d, groupLabel: g.label }))) || [];
+    const displayContacts = contactInfo?.contactGroups?.filter((g) => g.in_hero).flatMap((g) => g.contact_details.map((d) => ({ ...d, groupLabel: g.label }))) || [];
 
-    // Fallbacks if no featured contacts of specific types are found
     const primaryPhone = displayContacts.find((c) => c.type === 'phone');
     const primaryAddress = displayContacts.find((c) => c.type === 'address');
     const primaryHours = displayContacts.find((c) => c.type === 'hours');
@@ -106,7 +104,7 @@ export function CtaSection() {
                                 <div className="space-y-6">
                                     {displayContacts.length > 0 ? (
                                         contactInfo?.contactGroups
-                                            ?.filter((g) => g.featured)
+                                            ?.filter((g) => g.in_hero)
                                             .map((group) => (
                                                 <div key={group.id} className="mb-4">
                                                     {' '}

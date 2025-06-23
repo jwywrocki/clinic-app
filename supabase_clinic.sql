@@ -54,6 +54,7 @@ create table if not exists pages (
     meta_description text,
     is_published boolean default false,
     created_by uuid references users (id),
+    survey_id uuid references surveys (id),
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
 );
@@ -122,8 +123,11 @@ create table if not exists page_settings (
     content text not null,
     subtitle text,
     hero_image text,
-    created_at timestamptz default now (),
-    updated_at timestamptz default now ()
+    survey_id uuid references surveys(id) on delete
+    set
+        null,
+        created_at timestamptz default now (),
+        updated_at timestamptz default now ()
 );
 
 -- SERVICES
@@ -152,15 +156,88 @@ create table if not exists contact_details (
             )
         ),
         value text not null,
+        order_position integer not null default 1,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
 );
 
--- CONTACT GROUOPS
+-- CONTACT GROUPS
 create table if not exists contact_groups (
     id uuid primary key default gen_random_uuid(),
     label text not null,
-    featured boolean not null default false,
+    in_hero boolean not null default false,
+    in_footer boolean not null default false,
+    order_position integer not null default 1,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
+);
+
+-- SURVEYS
+create table if not exists surveys (
+    id uuid primary key default gen_random_uuid(),
+    title text not null,
+    is_published boolean default false,
+    created_by uuid references users(id),
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+-- QUESTIONS
+create table if not exists question_has_survey (
+    id uuid primary key default gen_random_uuid(),
+    survey_id uuid not null references surveys(id) on delete cascade,
+    text text not null,
+    type text not null check (type in ('single', 'multi', 'text')),
+    order_no integer not null default 0
+);
+
+-- QUESTION OPTIONS
+create table if not exists option_has_question (
+    id uuid primary key default gen_random_uuid(),
+    question_id uuid not null references question_has_survey(id) on delete cascade,
+    text text not null,
+    order_no integer not null default 0
+);
+
+-- SURVEY ANSWERS
+create table if not exists survey_answers (
+    id uuid primary key default gen_random_uuid(),
+    survey_id uuid not null references surveys(id) on delete cascade,
+    question_id uuid not null references question_has_survey(id),
+    option_id uuid references option_has_question(id),
+    answer_text text,
+    response_id uuid not null,
+    submitted_at timestamptz not null default now()
+);
+
+-- SITE SETTINGS
+create table if not exists site_settings (
+    id uuid primary key default gen_random_uuid(),
+    key text unique not null,
+    value text,
+    description text,
+    created_by uuid references users(id) on delete
+    set
+        null,
+        updated_by uuid references users(id) on delete
+    set
+        null,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+);
+
+-- DATABASE BACKUPS
+create table if not exists database_backups (
+    id uuid primary key default gen_random_uuid (),
+    filename text not null,
+    file_path text not null,
+    file_size bigint not null default 0,
+    backup_type text not null default 'manual',
+    status text not null default 'in_progress',
+    error_message text,
+    created_by uuid references users(id) on delete
+    set
+        null,
+        created_at timestamptz default now (),
+        completed_at timestamptz
 );

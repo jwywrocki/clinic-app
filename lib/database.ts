@@ -1,4 +1,4 @@
-import { createSupabaseClient } from './supabase-client';
+import { createSupabaseClient } from './supabase';
 
 export async function getPageBySlug(slug: string) {
     try {
@@ -32,11 +32,13 @@ export async function getFormattedContactInfo(): Promise<{
     contactGroups: Array<{
         id: string;
         label: string;
-        featured: boolean;
+        in_hero: boolean;
+        in_footer: boolean;
         contact_details: Array<{
             id: string;
             type: string;
             value: string;
+            order_position: number;
         }>;
     }> | null;
 } | null> {
@@ -54,8 +56,9 @@ export async function getFormattedContactInfo(): Promise<{
                 `
                 id,
                 label,
-                featured,
-                contact_details (id, type, value)
+                in_hero,
+                in_footer,
+                contact_details (id, type, value, order_position)
             `
             )
             .order('created_at', { ascending: true });
@@ -74,11 +77,13 @@ export async function getFormattedContactInfo(): Promise<{
             contactGroups: Array<{
                 id: string;
                 label: string;
-                featured: boolean;
+                in_hero: boolean;
+                in_footer: boolean;
                 contact_details: Array<{
                     id: string;
                     type: string;
                     value: string;
+                    order_position: number;
                 }>;
             }>;
         } = {
@@ -94,46 +99,48 @@ export async function getFormattedContactInfo(): Promise<{
             contactInfo.contactGroups = allGroups.map((group) => ({
                 id: group.id,
                 label: group.label,
-                featured: group.featured,
+                in_hero: group.in_hero,
+                in_footer: group.in_footer,
                 contact_details: group.contact_details
-                    ? group.contact_details.map((detail) => ({
-                          id: detail.id,
-                          type: detail.type,
-                          value: detail.value,
-                      }))
+                    ? group.contact_details
+                          .sort((a, b) => a.order_position - b.order_position)
+                          .map((detail) => ({
+                              id: detail.id,
+                              type: detail.type,
+                              value: detail.value,
+                              order_position: detail.order_position,
+                          }))
                     : [],
             }));
 
-            // Optionally, populate the top-level convenience fields (phone, email, etc.)
-            // from the first featured group that has them, if this is still desired.
-            const firstFeaturedPhoneGroup = allGroups.find((g) => g.featured && g.contact_details?.some((d) => d.type === 'phone'));
-            if (firstFeaturedPhoneGroup) {
-                const phoneDetail = firstFeaturedPhoneGroup.contact_details.find((d) => d.type === 'phone');
-                if (phoneDetail) {
-                    contactInfo.phone = phoneDetail.value;
-                    contactInfo.phoneLabel = firstFeaturedPhoneGroup.label;
+            const firstHeroPhoneGroup = allGroups.find((g) => g.in_hero && g.contact_details?.some((d) => d.type === 'phone'));
+            if (firstHeroPhoneGroup) {
+                const phoneDetails = firstHeroPhoneGroup.contact_details.filter((d) => d.type === 'phone').sort((a, b) => a.order_position - b.order_position);
+                if (phoneDetails.length > 0) {
+                    contactInfo.phone = phoneDetails[0].value;
+                    contactInfo.phoneLabel = firstHeroPhoneGroup.label;
                 }
             }
 
-            const firstFeaturedEmailGroup = allGroups.find((g) => g.featured && g.contact_details?.some((d) => d.type === 'email'));
-            if (firstFeaturedEmailGroup) {
-                const emailDetail = firstFeaturedEmailGroup.contact_details.find((d) => d.type === 'email');
+            const firstEmailGroup = allGroups.find((g) => (g.in_hero || g.in_footer) && g.contact_details?.some((d) => d.type === 'email'));
+            if (firstEmailGroup) {
+                const emailDetail = firstEmailGroup.contact_details.find((d) => d.type === 'email');
                 if (emailDetail) {
                     contactInfo.email = emailDetail.value;
                 }
             }
 
-            const firstFeaturedAddressGroup = allGroups.find((g) => g.featured && g.contact_details?.some((d) => d.type === 'address'));
-            if (firstFeaturedAddressGroup) {
-                const addressDetail = firstFeaturedAddressGroup.contact_details.find((d) => d.type === 'address');
+            const firstAddressGroup = allGroups.find((g) => (g.in_hero || g.in_footer) && g.contact_details?.some((d) => d.type === 'address'));
+            if (firstAddressGroup) {
+                const addressDetail = firstAddressGroup.contact_details.find((d) => d.type === 'address');
                 if (addressDetail) {
                     contactInfo.address = addressDetail.value;
                 }
             }
 
-            const firstFeaturedHoursGroup = allGroups.find((g) => g.featured && g.contact_details?.some((d) => d.type === 'hours'));
-            if (firstFeaturedHoursGroup) {
-                const hoursDetail = firstFeaturedHoursGroup.contact_details.find((d) => d.type === 'hours');
+            const firstHeroHoursGroup = allGroups.find((g) => g.in_hero && g.contact_details?.some((d) => d.type === 'hours'));
+            if (firstHeroHoursGroup) {
+                const hoursDetail = firstHeroHoursGroup.contact_details.find((d) => d.type === 'hours');
                 if (hoursDetail) {
                     contactInfo.hours = hoursDetail.value;
                 }

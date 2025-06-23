@@ -10,7 +10,6 @@ const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
 // GET /api/users
 export async function GET() {
     try {
-        // pobieramy userów wraz z rolami
         const { data: users, error } = await supabase.from('users').select(`
         id,
         username,
@@ -25,7 +24,6 @@ export async function GET() {
         )
       `);
 
-        console.log('🛠 GET /api/users result:', { users, error });
         if (error) throw error;
         return NextResponse.json(users);
     } catch (e: any) {
@@ -44,18 +42,15 @@ export async function POST(request: Request) {
 
         const hash = await bcrypt.hash(password + pepper, saltRounds);
         const now = new Date().toISOString();
-        console.log('🛠 POST /api/users insertData:', { username, hash, is_active, now, role });
 
         const { data: user, error } = await supabase
             .from('users')
             .insert([{ username, password_hash: hash, is_active, created_at: now, updated_at: now }])
             .select()
             .single();
-        console.log('🛠 POST /api/users supabase.insert result:', { user, error });
         if (error || !user) throw error || new Error('No user returned');
 
         if (role) {
-            // Find role by name and assign to user
             const { data: roleData, error: roleError } = await supabase.from('roles').select('id').eq('name', role).single();
 
             if (roleError || !roleData) {
@@ -63,13 +58,10 @@ export async function POST(request: Request) {
                 throw new Error(`Role '${role}' not found`);
             }
 
-            console.log('🛠 POST /api/users inserting role:', { user_id: user.id, role_id: roleData.id });
             const { error: rolesErr } = await supabase.from('user_has_roles').insert([{ user_id: user.id, role_id: roleData.id }]);
-            console.log('🛠 POST /api/users roles insert result:', { rolesErr });
             if (rolesErr) throw rolesErr;
         }
 
-        // Fetch the complete user data with role information
         const { data: completeUser, error: fetchErr } = await supabase
             .from('users')
             .select(
@@ -92,12 +84,11 @@ export async function POST(request: Request) {
 
         if (fetchErr || !completeUser) {
             console.error('🛠 POST /api/users failed to fetch complete user:', fetchErr);
-            // Fallback to basic user data
+
             const userWithRole = { ...user, role: role || '' };
             return NextResponse.json(userWithRole, { status: 201 });
         }
 
-        // Transform the user data to match the expected format
         const userWithRole = {
             ...completeUser,
             role: (completeUser as any).user_has_roles[0]?.role?.name || '',

@@ -18,8 +18,16 @@ import { DoctorsManagement } from './DoctorsManagement';
 import { MenuManagement } from './MenuManagement';
 import { ContactManagement } from './ContactManagement';
 import { UsersManagement } from './UsersManagement';
+import { SurveysManagement } from './SurveysManagement';
+import { Settings } from './Settings';
 
-import { User, Page, MenuItem, Service, NewsItem, Doctor, ContactGroup, ContactDetail as ContactDetailType } from '../types';
+import { User } from '@/lib/types/users';
+import { Page } from '@/lib/types/pages';
+import { MenuItem } from '@/lib/types/menu';
+import { Service } from '@/lib/types/services';
+import { NewsItem } from '@/lib/types/news';
+import { Doctor } from '@/lib/types/doctors';
+import { ContactGroup, ContactDetail as ContactDetailType } from '@/lib/types/contact';
 
 export default function PolishAdminPanel() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,12 +47,12 @@ export default function PolishAdminPanel() {
     const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
 
     const router = useRouter();
-    const supabase = createSupabaseClient();
     const { toast } = useToast();
 
     const fetchData = async () => {
         setLoading(true);
         try {
+            const supabase = createSupabaseClient();
             if (!supabase) return;
 
             const [usersResult, pagesResult, menuResult, contactGroupsResponse, servicesResult, newsResult, doctorsResult, rolesResult] = await Promise.allSettled([
@@ -161,7 +169,7 @@ export default function PolishAdminPanel() {
         if (isLoggedIn) {
             fetchData();
         }
-    }, [isLoggedIn, supabase]);
+    }, [isLoggedIn]);
 
     useEffect(() => {
         if (isLoggedIn && currentUser && users.length > 0) {
@@ -272,6 +280,37 @@ export default function PolishAdminPanel() {
             () => MenuCache.clearCache()
         );
 
+    const saveSurvey = async (surveyData: any) => {
+        try {
+            const response = await fetch('/api/surveys', {
+                method: surveyData.id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(surveyData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Nie udało się zapisać ankiety');
+            }
+
+            const result = await response.json();
+            toast({
+                title: 'Sukces',
+                description: `Ankieta została ${surveyData.id ? 'zaktualizowana' : 'utworzona'}.`,
+                variant: 'success',
+            });
+            return result;
+        } catch (error: any) {
+            console.error('Błąd zapisywania ankiety:', error);
+            toast({
+                title: 'Błąd',
+                description: error.message || 'Nie udało się zapisać ankiety',
+                variant: 'destructive',
+            });
+            throw error;
+        }
+    };
+
     const handleSaveContactGroup = async (groupWithDetails: ContactGroup) => {
         const { contact_details, ...groupDataToSave } = groupWithDetails;
         const isNewGroup = !groupDataToSave.id || groupDataToSave.id.startsWith('new-group-temp-id');
@@ -358,7 +397,7 @@ export default function PolishAdminPanel() {
                 return updatedGroups.filter((g) => g !== null && g !== undefined);
             });
 
-            toast({ title: 'Sukces', description: 'Grupa kontaktów i jej szczegóły zapisane.' });
+            toast({ title: 'Sukces', description: 'Grupa kontaktów i jej szczegóły zapisane.', variant: 'success' });
         } catch (error: any) {
             console.error('Błąd zapisu grupy kontaktów lub jej szczegółów:', error);
             toast({ title: 'Błąd Ogólny Zapisu', description: error.message, variant: 'destructive' });
@@ -374,7 +413,7 @@ export default function PolishAdminPanel() {
             if (!response.ok || result.error) throw new Error(result.error || 'Nie udało się usunąć grupy kontaktów');
 
             setContactGroups((prev) => prev.filter((g) => g.id !== groupId));
-            toast({ title: 'Sukces', description: 'Grupa kontaktów usunięta.' });
+            toast({ title: 'Sukces', description: 'Grupa kontaktów usunięta.', variant: 'success' });
         } catch (error: any) {
             console.error('Błąd usuwania grupy kontaktów:', error);
             toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
@@ -400,7 +439,7 @@ export default function PolishAdminPanel() {
                 const cgData = await cgResponse.json();
                 if (cgResponse.ok && Array.isArray(cgData.data)) setContactGroups(cgData.data);
             }
-            toast({ title: 'Sukces', description: 'Szczegół kontaktu usunięty.' });
+            toast({ title: 'Sukces', description: 'Szczegół kontaktu usunięty.', variant: 'success' });
         } catch (error: any) {
             console.error('Błąd usuwania szczegółu kontaktu:', error);
             toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
@@ -473,6 +512,8 @@ export default function PolishAdminPanel() {
     const deleteItem = async (table: TableKey, id: string) => {
         try {
             if (!confirm('Czy na pewno chcesz usunąć ten element?')) return;
+
+            const supabase = createSupabaseClient();
             if (!supabase) {
                 toast({ title: 'Błąd', description: 'Klient Supabase nie jest zainicjowany.', variant: 'destructive' });
                 return;
@@ -491,10 +532,46 @@ export default function PolishAdminPanel() {
             setItems((prev: any[]) => prev.filter((item) => item.id !== id));
             if (extra) extra();
 
-            toast({ title: 'Sukces', description: `Pomyślnie usunięto ${itemName}.` });
+            toast({ title: 'Sukces', description: `Pomyślnie usunięto ${itemName}.`, variant: 'success' });
         } catch (error: any) {
             console.error('Błąd usuwania elementu:', error);
             toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+        }
+    };
+
+    const handleReorderContactGroups = async (reorderedGroups: ContactGroup[]) => {
+        try {
+            setContactGroups(reorderedGroups);
+
+            const response = await fetch('/api/contact_groups/reorder', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    groups: reorderedGroups.map((group) => ({
+                        id: group.id,
+                        order_position: group.order_position,
+                    })),
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Nie udało się zaktualizować kolejności');
+            }
+
+            toast({
+                title: 'Sukces',
+                description: 'Kolejność działów została zaktualizowana.',
+                variant: 'success',
+            });
+        } catch (error: any) {
+            console.error('Błąd aktualizacji kolejności grup kontaktowych:', error);
+            toast({
+                title: 'Błąd',
+                description: error.message || 'Nie udało się zaktualizować kolejności działów',
+                variant: 'destructive',
+            });
+            fetchData();
         }
     };
 
@@ -528,7 +605,7 @@ export default function PolishAdminPanel() {
                     onLogout={handleLogout}
                 />
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <Header activeTab={activeTab} supabase={supabase} />
+                    <Header activeTab={activeTab} />
                     <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
                         {activeTab === 'dashboard' && <Dashboard pages={pages} services={services} news={news} doctors={doctors} />}
                         {activeTab === 'news' && hasPermission('manage_pages') && <NewsManagement news={news} onSave={saveNews} onDelete={(id) => deleteItem('news', id)} />}
@@ -536,11 +613,26 @@ export default function PolishAdminPanel() {
                         {activeTab === 'menus' && hasPermission('manage_menus') && <MenuManagement menuItems={menuItems} onSave={saveMenuItem} onDelete={(id) => deleteItem('menu_items', id)} />}
                         {activeTab === 'doctors' && hasPermission('manage_pages') && <DoctorsManagement doctors={doctors} onSave={saveDoctor} onDelete={(id) => deleteItem('doctors', id)} />}
                         {activeTab === 'services' && hasPermission('manage_pages') && <ServicesManagement services={services} onSave={saveService} onDelete={(id) => deleteItem('services', id)} />}
+                        {activeTab === 'surveys' && hasPermission('manage_pages') && <SurveysManagement onSave={saveSurvey} currentUser={currentUser} />}
                         {activeTab === 'contact' && hasPermission('manage_contact') && (
-                            <ContactManagement contactGroups={contactGroups} onSaveGroup={handleSaveContactGroup} onDeleteGroup={handleDeleteContactGroup} onDeleteDetail={handleDeleteContactDetail} />
+                            <ContactManagement
+                                contactGroups={contactGroups}
+                                onSaveGroup={handleSaveContactGroup}
+                                onDeleteGroup={handleDeleteContactGroup}
+                                onDeleteDetail={handleDeleteContactDetail}
+                                onReorderGroups={handleReorderContactGroups}
+                            />
                         )}
                         {activeTab === 'users' && hasPermission('manage_users') && (
                             <UsersManagement users={users} roles={roles} onSave={saveUser} onDelete={(id) => deleteItem('users', id)} currentUser={currentUser} />
+                        )}
+                        {activeTab === 'settings' && hasPermission('manage_pages') && (
+                            <Settings
+                                currentUser={currentUser}
+                                onSave={async (data) => {
+                                    // Handle settings save if needed
+                                }}
+                            />
                         )}
                     </main>
                 </div>

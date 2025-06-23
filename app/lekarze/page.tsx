@@ -8,18 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Stethoscope, Calendar, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-let supabase: any = null;
-if (supabaseUrl && supabaseAnonKey) {
-    try {
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
-    } catch (error) {
-        console.error('Failed to initialize Supabase client for Doctors page:', error);
-    }
-}
+import { createSupabaseClient } from '@/lib/supabase';
 
 interface Doctor {
     id: string;
@@ -46,6 +35,7 @@ export default function DoctorsPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
+                const supabase = createSupabaseClient();
                 if (!supabase) return;
 
                 const { data: pageData, error: pageError } = await supabase.from('pages').select('*').eq('slug', 'lekarze').single();
@@ -81,10 +71,10 @@ export default function DoctorsPage() {
             </LayoutWrapper>
         );
     }
-    console.log('Doctors data fetched:', doctors);
+
     return (
         <LayoutWrapper>
-            <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+            <div id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
                 <AnimatedSection animation="fadeInUp">
                     <section className="py-20">
                         <div className="container mx-auto px-4 text-center">
@@ -147,7 +137,7 @@ export default function DoctorsPage() {
                         </div>
                     </section>
                 </AnimatedSection>
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

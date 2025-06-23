@@ -1,8 +1,6 @@
-// Prosta funkcja do sanityzacji HTML - usuwa potencjalnie niebezpieczne tagi
 export function sanitizeHtml(html: string): string {
     if (!html) return '';
 
-    // Lista dozwolonych tagów HTML
     const allowedTags = [
         'p',
         'br',
@@ -36,7 +34,6 @@ export function sanitizeHtml(html: string): string {
         'li',
     ];
 
-    // Usuń potencjalnie niebezpieczne tagi
     let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
     sanitized = sanitized.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
     sanitized = sanitized.replace(/on\w+="[^"]*"/gi, '');
@@ -60,9 +57,7 @@ export function textToHtml(text: string): string {
 export function sanitizePhoneNumberHtml(html: string | null | undefined): string {
     if (!html) return '';
     let sanitizedHtml = html;
-    // Remove <font...> and </font> tags
     sanitizedHtml = sanitizedHtml.replace(/<\/?font[^>]*>/gi, '');
-    // Remove <span...> and </span> tags
     sanitizedHtml = sanitizedHtml.replace(/<\/?span[^>]*>/gi, '');
     return sanitizedHtml;
 }

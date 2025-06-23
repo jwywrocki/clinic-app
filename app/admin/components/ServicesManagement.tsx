@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Service } from '../types';
+import { Edit, Trash2 } from 'lucide-react';
+import { Service } from '@/lib/types/services';
 
 interface ServicesManagementProps {
     services: Service[];
@@ -90,23 +91,36 @@ export function ServicesManagement({ services, onSave, onDelete }: ServicesManag
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {services.map((service) => (
-                                        <tr key={service.id}>
+                                        <tr key={service.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.title}</td>
                                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{service.description}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.icon}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <Button variant="outline" size="sm" onClick={() => setEditingService(service)}>
-                                                    Edytuj
+                                                <Button variant="outline" size="sm" onClick={() => setEditingService(service)} title="Edytuj usługę">
+                                                    <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="destructive" size="sm" onClick={() => onDelete('services', service.id)}>
-                                                    Usuń
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => onDelete('services', service.id)}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    title="Usuń usługę"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {services.length === 0 && <p className="text-center text-gray-500 py-4">Brak usług.</p>}
+                            {services.length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="text-gray-500">
+                                        <h3 className="text-lg font-medium mb-2">Brak usług</h3>
+                                        <p className="text-sm">Rozpocznij od dodania pierwszej usługi.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>

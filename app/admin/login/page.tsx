@@ -50,7 +50,6 @@ export default function LoginPage() {
                     title: 'Zalogowano pomyślnie!',
                     description: `Witaj ${loginForm.username}`,
                 });
-                // Odśwież status sesji i przejdź do panelu admina
                 router.replace('/admin');
             } else {
                 setLoginError(data.error || 'Nieprawidłowe dane logowania');

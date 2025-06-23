@@ -12,20 +12,16 @@ export async function GET(request: Request) {
         const segments = url.pathname.split('/');
         const maybeId = segments[segments.length - 1];
 
-        // jeśli ostatni segment to nie "doctors", zwracamy pojedynczego lekarza
         if (maybeId && maybeId !== 'doctors') {
-            console.log('🛠 GET /api/doctors/:id', { id: maybeId });
             const { data, error } = await supabase.from('doctors').select('*').eq('id', maybeId).single();
-            console.log('🛠 supabase.select single result:', { data, error });
             if (error) throw error;
             return NextResponse.json(data);
         }
 
-        // w przeciwnym razie zwróć wszystkich lekarzy
-        console.log('🛠 GET /api/doctors all');
         const { data, error } = await supabase.from('doctors').select('*').order('name', { ascending: true });
-        console.log('🛠 supabase.select all result:', { data, error });
+
         if (error) throw error;
+
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('GET /api/doctors error', e);
@@ -37,7 +33,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { name, specialization, description = '', is_active = true } = await request.json();
-        console.log('🛠 POST /api/doctors body:', { name, specialization, description, is_active });
 
         if (!name || !specialization) {
             return NextResponse.json({ error: 'Brakuje name lub specialization' }, { status: 400 });
@@ -52,10 +47,9 @@ export async function POST(request: Request) {
             created_at: now,
             updated_at: now,
         };
-        console.log('🛠 supabase.insert payload:', insert);
 
         const { data, error } = await supabase.from('doctors').insert([insert]).select().single();
-        console.log('🛠 supabase.insert result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data, { status: 201 });
@@ -71,7 +65,6 @@ export async function PATCH(request: Request) {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
         const { name, specialization, description, is_active } = await request.json();
-        console.log('🛠 PATCH /api/doctors body:', { id, name, specialization, description, is_active });
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
@@ -83,9 +76,8 @@ export async function PATCH(request: Request) {
         if (description !== undefined) update.description = description;
         if (is_active !== undefined) update.is_active = is_active;
 
-        console.log('🛠 supabase.update payload:', update);
         const { data, error } = await supabase.from('doctors').update(update).eq('id', id).select().single();
-        console.log('🛠 supabase.update result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data);
@@ -100,14 +92,13 @@ export async function DELETE(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
-        console.log('🛠 DELETE /api/doctors target ID:', id);
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
         }
 
         const { data, error } = await supabase.from('doctors').delete().eq('id', id).select().single();
-        console.log('🛠 supabase.delete result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data);

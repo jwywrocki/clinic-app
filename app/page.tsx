@@ -10,13 +10,13 @@ export default function HomePage() {
     return (
         <LayoutWrapper>
             <SkipLink href="#main-content">Przejdź do głównej treści</SkipLink>
-            <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+            <div id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
                 <HeroSection />
                 <NewsSection />
                 <StatsSection />
                 <ServicesSection />
                 <CtaSection />
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

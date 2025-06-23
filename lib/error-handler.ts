@@ -27,7 +27,6 @@ export function handleApiError(error: unknown): HttpError {
     }
 
     if (error instanceof Error) {
-        // Próbuj wyciągnąć kod statusu z wiadomości błędu
         const statusMatch = error.message.match(/(\d{3})/);
         if (statusMatch) {
             const statusCode = Number.parseInt(statusMatch[1]);
@@ -35,6 +34,5 @@ export function handleApiError(error: unknown): HttpError {
         }
     }
 
-    // Domyślny błąd serwera
     return createHttpError(500, 'Wystąpił nieoczekiwany błąd');
 }

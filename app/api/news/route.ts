@@ -13,17 +13,17 @@ export async function GET(request: Request) {
         const maybeId = parts[parts.length - 1];
 
         if (maybeId && maybeId !== 'news') {
-            console.log('🛠 GET /api/news/:id', maybeId);
             const { data, error } = await supabase.from('news').select('*').eq('id', maybeId).single();
-            console.log('🛠 GET single result:', { data, error });
+
             if (error) throw error;
+
             return NextResponse.json(data);
         }
 
-        console.log('🛠 GET /api/news all');
         const { data, error } = await supabase.from('news').select('*').order('published_at', { ascending: false });
-        console.log('🛠 GET all result:', { data, error });
+
         if (error) throw error;
+
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('GET /api/news error', e);
@@ -35,14 +35,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { title, slug, content, published_at = null, is_published = false, created_by = null } = await request.json();
-
-        console.log('🛠 POST /api/news body:', {
-            title,
-            slug,
-            is_published,
-            published_at,
-            created_by,
-        });
 
         if (!title || !slug || !content) {
             return NextResponse.json({ error: 'Brakuje title, slug lub content' }, { status: 400 });
@@ -59,10 +51,9 @@ export async function POST(request: Request) {
             created_at: now,
             updated_at: now,
         };
-        console.log('🛠 POST payload:', insert);
 
         const { data, error } = await supabase.from('news').insert([insert]).select().single();
-        console.log('🛠 POST result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data, { status: 201 });
@@ -78,7 +69,6 @@ export async function PATCH(request: Request) {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
         const body = await request.json();
-        console.log('🛠 PATCH /api/news body:', { id, ...body });
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
@@ -92,9 +82,8 @@ export async function PATCH(request: Request) {
         if (body.is_published !== undefined) update.is_published = body.is_published;
         if (body.created_by !== undefined) update.created_by = body.created_by;
 
-        console.log('🛠 PATCH payload:', update);
         const { data, error } = await supabase.from('news').update(update).eq('id', id).select().single();
-        console.log('🛠 PATCH result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data);
@@ -109,14 +98,13 @@ export async function DELETE(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
-        console.log('🛠 DELETE /api/news target ID:', id);
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
         }
 
         const { data, error } = await supabase.from('news').delete().eq('id', id).select().single();
-        console.log('🛠 DELETE result:', { data, error });
+
         if (error) throw error;
 
         return NextResponse.json(data);

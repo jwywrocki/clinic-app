@@ -4,25 +4,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Heart, Users, Shield, CheckCircle, Calendar, Phone, ArrowRight, Stethoscope, Activity, Baby, type Icon as LucideIcon } from 'lucide-react';
+import { Heart, Users, Shield, CheckCircle, Calendar, Phone, Activity, Stethoscope } from 'lucide-react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '@/lib/supabase';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { SkipLink } from '@/components/ui/skip-link';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-let supabase: any = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-    try {
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
-    } catch (error) {
-        console.error('Failed to initialize Supabase client:', error);
-    }
-}
 
 interface PageContent {
     id: string;
@@ -39,19 +26,28 @@ interface Service {
     icon: string;
 }
 
-const iconMap: { [key: string]: LucideIcon } = {
-    Users: Users,
-    Heart: Heart,
-    Stethoscope: Stethoscope,
-    Shield: Shield,
-    Activity: Activity,
-    Baby: Baby,
+const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+    users: Users,
+    heart: Heart,
+    activity: Activity,
+    shield: Shield,
+    stethoscope: Stethoscope,
 };
 
-const getIconComponent = (iconName: string | undefined): LucideIcon => {
-    if (iconName && iconMap[iconName]) {
+const getIconComponent = (iconName: string | undefined): React.ComponentType<{ className?: string }> => {
+    if (!iconName) {
+        return CheckCircle;
+    }
+
+    if (iconMap[iconName]) {
         return iconMap[iconName];
     }
+
+    const lowerIconName = iconName.toLowerCase();
+    if (iconMap[lowerIconName]) {
+        return iconMap[lowerIconName];
+    }
+
     return CheckCircle;
 };
 
@@ -64,6 +60,7 @@ export default function ServicesPage() {
         const fetchPageData = async () => {
             setLoading(true);
             try {
+                const supabase = createSupabaseClient();
                 if (!supabase) {
                     console.warn('Supabase client not initialized for Services page.');
                     setLoading(false);
@@ -111,7 +108,7 @@ export default function ServicesPage() {
     return (
         <LayoutWrapper>
             <SkipLink href="#main-content">Przejdź do głównej treści</SkipLink>
-            <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+            <div id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
                 {/* Hero Section */}
                 <AnimatedSection animation="fadeInUp">
                     <section className="py-20">
@@ -189,7 +186,7 @@ export default function ServicesPage() {
                         </div>
                     </section>
                 </AnimatedSection>
-            </main>
+            </div>
         </LayoutWrapper>
     );
 }

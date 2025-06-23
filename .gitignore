@@ -23,3 +23,9 @@ next-env.d.ts
 
 # uploads
 /public/uploads
+
+# backups
+/backups
+
+# logs
+/logs

@@ -8,14 +8,10 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 export async function GET(request: Request, context: { params: { id: string } }) {
     try {
         const { id } = context.params;
-        const { data, error } = await supabase
-            .from('contact_groups')
-            .select('*, contact_details(*)') // Fetch group and its related details
-            .eq('id', id)
-            .single();
+        const { data, error } = await supabase.from('contact_groups').select('*, contact_details(*)').eq('id', id).single();
 
         if (error) {
-            if (error.code === 'PGRST116') { // PostgREST error for "Not found"
+            if (error.code === 'PGRST116') {
                 return NextResponse.json({ error: 'Contact group not found' }, { status: 404 });
             }
             throw error;
@@ -32,29 +28,36 @@ export async function PATCH(request: Request, context: { params: { id: string } 
     try {
         const { id } = context.params;
         const body = await request.json();
-        const { label, featured } = body;
+        const { label, in_hero, in_footer, order_position } = body;
 
-        if (!label && typeof featured === 'undefined') {
-            return NextResponse.json({ error: 'Label or featured status is required for update' }, { status: 400 });
+        if (!label && typeof in_hero === 'undefined' && typeof in_footer === 'undefined' && typeof order_position === 'undefined') {
+            return NextResponse.json({ error: 'Label, in_hero, in_footer, or order_position is required for update' }, { status: 400 });
         }
 
-        const updateData: { label?: string; featured?: boolean; updated_at: string } = {
+        const updateData: {
+            label?: string;
+            in_hero?: boolean;
+            in_footer?: boolean;
+            order_position?: number;
+            updated_at: string;
+        } = {
             updated_at: new Date().toISOString(),
         };
 
         if (label) {
             updateData.label = label;
         }
-        if (typeof featured !== 'undefined') {
-            updateData.featured = featured;
+        if (typeof in_hero !== 'undefined') {
+            updateData.in_hero = in_hero;
+        }
+        if (typeof in_footer !== 'undefined') {
+            updateData.in_footer = in_footer;
+        }
+        if (typeof order_position !== 'undefined') {
+            updateData.order_position = order_position;
         }
 
-        const { data, error } = await supabase
-            .from('contact_groups')
-            .update(updateData)
-            .eq('id', id)
-            .select('*, contact_details(*)')
-            .single();
+        const { data, error } = await supabase.from('contact_groups').update(updateData).eq('id', id).select('*, contact_details(*)').single();
 
         if (error) {
             if (error.code === 'PGRST116') {
@@ -75,17 +78,16 @@ export async function DELETE(request: Request, context: { params: { id: string }
         const { id } = context.params;
 
         // Supabase will handle ON DELETE SET NULL for contact_details.group_id
-        const { error } = await supabase
-            .from('contact_groups')
-            .delete()
-            .eq('id', id);
+        const { error } = await supabase.from('contact_groups').delete().eq('id', id);
 
         if (error) {
-            if (error.code === 'PGRST116') { // Should not happen if delete is successful, but good practice
+            if (error.code === 'PGRST116') {
+                // Should not happen if delete is successful, but good practice
                 return NextResponse.json({ error: 'Contact group not found' }, { status: 404 });
             }
-             // Check for foreign key violation if ON DELETE SET NULL was not correctly set up or if other constraints exist
-            if (error.code === '23503') { // foreign_key_violation
+            // Check for foreign key violation if ON DELETE SET NULL was not correctly set up or if other constraints exist
+            if (error.code === '23503') {
+                // foreign_key_violation
                 return NextResponse.json({ error: 'Cannot delete group, it is referenced by other records.' }, { status: 409 });
             }
             throw error;

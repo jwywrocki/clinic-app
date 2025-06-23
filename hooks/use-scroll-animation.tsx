@@ -24,22 +24,25 @@ export function useScrollAnimation(options: UseScrollAnimationOptions = {}) {
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReducedMotion) {
             setIsVisible(true);
+            setHasTriggered(true);
             return;
         }
 
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting) {
+                if (entry.isIntersecting && !hasTriggered) {
                     if (delay > 0) {
                         setTimeout(() => {
-                            setIsVisible(true);
-                            if (triggerOnce) setHasTriggered(true);
+                            if (!hasTriggered) {
+                                setIsVisible(true);
+                                if (triggerOnce) setHasTriggered(true);
+                            }
                         }, delay);
                     } else {
                         setIsVisible(true);
                         if (triggerOnce) setHasTriggered(true);
                     }
-                } else if (!triggerOnce && !hasTriggered) {
+                } else if (!triggerOnce && !entry.isIntersecting) {
                     setIsVisible(false);
                 }
             },
@@ -56,44 +59,79 @@ export function useScrollAnimation(options: UseScrollAnimationOptions = {}) {
         };
     }, [threshold, rootMargin, triggerOnce, delay, hasTriggered]);
 
-    return { elementRef, isVisible };
+    return { elementRef, isVisible, hasTriggered };
 }
 
 // Animation variants for different effects
 export const animationVariants = {
     fadeInUp: {
-        initial: 'opacity-0 translate-y-8',
-        animate: 'opacity-100 translate-y-0',
+        initial: 'opacity-0 transform translate-y-8',
+        animate: 'opacity-100 transform translate-y-0',
         transition: 'transition-all duration-700 ease-out',
     },
     fadeInLeft: {
-        initial: 'opacity-0 -translate-x-8',
-        animate: 'opacity-100 translate-x-0',
+        initial: 'opacity-0 transform -translate-x-8',
+        animate: 'opacity-100 transform translate-x-0',
         transition: 'transition-all duration-700 ease-out',
     },
     fadeInRight: {
-        initial: 'opacity-0 translate-x-8',
-        animate: 'opacity-100 translate-x-0',
+        initial: 'opacity-0 transform translate-x-8',
+        animate: 'opacity-100 transform translate-x-0',
+        transition: 'transition-all duration-700 ease-out',
+    },
+    fadeInDown: {
+        initial: 'opacity-0 transform -translate-y-8',
+        animate: 'opacity-100 transform translate-y-0',
         transition: 'transition-all duration-700 ease-out',
     },
     scaleIn: {
-        initial: 'opacity-0 scale-95',
-        animate: 'opacity-100 scale-100',
+        initial: 'opacity-0 transform scale-95',
+        animate: 'opacity-100 transform scale-100',
         transition: 'transition-all duration-500 ease-out',
     },
     slideInUp: {
-        initial: 'opacity-0 translate-y-12',
-        animate: 'opacity-100 translate-y-0',
+        initial: 'opacity-0 transform translate-y-12',
+        animate: 'opacity-100 transform translate-y-0',
         transition: 'transition-all duration-800 ease-out',
     },
     bounceIn: {
-        initial: 'opacity-0 scale-95',
-        animate: 'opacity-100 scale-100',
-        transition: 'transition-all duration-500 ease-out',
+        initial: 'opacity-0 transform scale-90',
+        animate: 'opacity-100 transform scale-100',
+        transition: 'transition-all duration-600 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]',
     },
     fadeIn: {
         initial: 'opacity-0',
         animate: 'opacity-100',
         transition: 'transition-all duration-700 ease-out',
+    },
+    slideInLeft: {
+        initial: 'opacity-0 transform -translate-x-12',
+        animate: 'opacity-100 transform translate-x-0',
+        transition: 'transition-all duration-800 ease-out',
+    },
+    slideInRight: {
+        initial: 'opacity-0 transform translate-x-12',
+        animate: 'opacity-100 transform translate-x-0',
+        transition: 'transition-all duration-800 ease-out',
+    },
+    zoomIn: {
+        initial: 'opacity-0 transform scale-50',
+        animate: 'opacity-100 transform scale-100',
+        transition: 'transition-all duration-600 ease-out',
+    },
+    rotateIn: {
+        initial: 'opacity-0 transform rotate-180 scale-75',
+        animate: 'opacity-100 transform rotate-0 scale-100',
+        transition: 'transition-all duration-800 ease-out',
+    },
+    flipInX: {
+        initial: 'opacity-0 transform rotateX-90',
+        animate: 'opacity-100 transform rotateX-0',
+        transition: 'transition-all duration-600 ease-out',
+    },
+    flipInY: {
+        initial: 'opacity-0 transform rotateY-90',
+        animate: 'opacity-100 transform rotateY-0',
+        transition: 'transition-all duration-600 ease-out',
     },
 };

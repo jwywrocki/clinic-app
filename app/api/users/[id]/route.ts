@@ -13,7 +13,6 @@ export async function PATCH(request: Request) {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
         const { username, password, is_active, role } = await request.json();
-        console.log('🛠 PATCH /api/users body:', { id, username, is_active, role, hasPassword: !!password });
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
@@ -23,18 +22,14 @@ export async function PATCH(request: Request) {
         if (password?.trim()) {
             update.password_hash = await bcrypt.hash(password + pepper, saltRounds);
         }
-        console.log('🛠 PATCH /api/users payload:', update);
 
         const { error: upErr } = await supabase.from('users').update(update).eq('id', id);
-        console.log('🛠 PATCH /api/users supabase.update result:', { upErr });
+
         if (upErr) throw upErr;
 
         if (role) {
-            // Clear existing roles for user
-            console.log('🛠 PATCH /api/users clearing roles for user:', id);
             await supabase.from('user_has_roles').delete().eq('user_id', id);
 
-            // Find role by name and assign to user
             const { data: roleData, error: roleError } = await supabase.from('roles').select('id').eq('name', role).single();
 
             if (roleError || !roleData) {
@@ -42,15 +37,15 @@ export async function PATCH(request: Request) {
                 throw new Error(`Role '${role}' not found`);
             }
 
-            console.log('🛠 PATCH /api/users inserting role:', { user_id: id, role_id: roleData.id });
             const { error: rolesErr } = await supabase.from('user_has_roles').insert([{ user_id: id, role_id: roleData.id }]);
-            console.log('🛠 PATCH /api/users roles insert result:', { rolesErr });
+
             if (rolesErr) throw rolesErr;
         }
 
         const { data: user, error: fetchErr } = await supabase
             .from('users')
-            .select(`
+            .select(
+                `
                 id,
                 username,
                 is_active,
@@ -62,10 +57,11 @@ export async function PATCH(request: Request) {
                         name
                     )
                 )
-            `)
+            `
+            )
             .eq('id', id)
             .single();
-        console.log('🛠 PATCH /api/users final fetched user:', { user, fetchErr });
+
         if (fetchErr || !user) throw fetchErr || new Error('Nie znaleziono usera');
 
         // Transform the user data to match the expected format
@@ -86,14 +82,13 @@ export async function DELETE(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
-        console.log('🛠 DELETE /api/users target ID:', id);
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
         }
 
         const { data, error } = await supabase.from('users').delete().eq('id', id).select().single();
-        console.log('🛠 DELETE /api/users supabase.delete result:', { data, error });
+
         if (error || !data) throw error || new Error('No user returned');
 
         return NextResponse.json(data, { status: 200 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Heart, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
@@ -25,16 +25,27 @@ export function Header({ menuItems = [] }: HeaderProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
+    const [focusedItem, setFocusedItem] = useState<string | null>(null);
     const pathname = usePathname();
+
+    const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const menuRef = useRef<HTMLElement>(null);
+    const dropdownRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
     useEffect(() => {
         setIsClient(true);
     }, []);
 
+    useEffect(() => {
+        return () => {
+            if (dropdownTimeoutRef.current) {
+                clearTimeout(dropdownTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const buildMenuHierarchy = (items: MenuItem[]): MenuItem[] => {
         if (!items || items.length === 0) return [];
-
-        console.log('Building menu hierarchy from items:', items);
 
         const itemMap = new Map<string, MenuItem>();
         const rootItems: MenuItem[] = [];
@@ -49,10 +60,8 @@ export function Header({ menuItems = [] }: HeaderProps) {
                 const parent = itemMap.get(item.parent_id)!;
                 if (!parent.children) parent.children = [];
                 parent.children.push(menuItem);
-                console.log(`Added ${item.title} as child of ${parent.title}`);
             } else {
                 rootItems.push(menuItem);
-                console.log(`Added ${item.title} as root item`);
             }
         });
 
@@ -60,26 +69,83 @@ export function Header({ menuItems = [] }: HeaderProps) {
         rootItems.forEach((item) => {
             if (item.children && item.children.length > 0) {
                 item.children.sort((a, b) => a.order_position - b.order_position);
-                console.log(
-                    `${item.title} has ${item.children.length} children:`,
-                    item.children.map((c) => c.title)
-                );
             }
         });
 
-        console.log('Final hierarchy:', rootItems);
         return rootItems;
     };
 
     const hierarchicalItems = buildMenuHierarchy(menuItems);
 
-    const handleMouseEnter = (itemId: string) => {
+    const handleMouseEnter = useCallback((itemId: string) => {
+        if (dropdownTimeoutRef.current) {
+            clearTimeout(dropdownTimeoutRef.current);
+            dropdownTimeoutRef.current = null;
+        }
         setActiveDropdown(itemId);
-    };
+    }, []);
 
-    const handleMouseLeave = () => {
-        setActiveDropdown(null);
-    };
+    const handleMouseLeave = useCallback(() => {
+        dropdownTimeoutRef.current = setTimeout(() => {
+            setActiveDropdown(null);
+            setFocusedItem(null);
+        }, 500);
+    }, []);
+
+    const handleSubmenuMouseEnter = useCallback(() => {
+        if (dropdownTimeoutRef.current) {
+            clearTimeout(dropdownTimeoutRef.current);
+            dropdownTimeoutRef.current = null;
+        }
+    }, []);
+
+    const handleSubmenuMouseLeave = useCallback(() => {
+        dropdownTimeoutRef.current = setTimeout(() => {
+            setActiveDropdown(null);
+            setFocusedItem(null);
+        }, 500);
+    }, []);
+
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent, itemId: string, hasChildren: boolean) => {
+            switch (e.key) {
+                case 'Enter':
+                case ' ':
+                    if (hasChildren) {
+                        e.preventDefault();
+                        setActiveDropdown(activeDropdown === itemId ? null : itemId);
+                        setFocusedItem(itemId);
+                    }
+                    break;
+                case 'Escape':
+                    setActiveDropdown(null);
+                    setFocusedItem(null);
+                    break;
+                case 'ArrowDown':
+                    if (hasChildren && activeDropdown !== itemId) {
+                        e.preventDefault();
+                        setActiveDropdown(itemId);
+                        setFocusedItem(itemId);
+                    }
+                    break;
+            }
+        },
+        [activeDropdown]
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setActiveDropdown(null);
+                setFocusedItem(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const closeMobileMenu = () => {
         setMobileMenuOpen(false);
@@ -91,7 +157,7 @@ export function Header({ menuItems = [] }: HeaderProps) {
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between h-20">
                         <div className="flex items-center gap-3">
-                            <Image src="/images/logo.png" alt="Logo" width={58} height={58} />
+                            <Image src="/images/logo.png" alt="Logo" width={58} height={74} className="w-auto h-auto max-w-[58px] max-h-[58px]" />
                             <div className="hidden lg:block">
                                 <div className="text-lg font-bold text-gray-900">SPZOZ GOZ</div>
                                 <div className="text-sm text-gray-600">Łopuszno</div>
@@ -109,7 +175,7 @@ export function Header({ menuItems = [] }: HeaderProps) {
                 <div className="flex items-center justify-between h-20">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-3 text-xl font-bold text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-600 rounded-lg p-2">
-                        <Image src="/images/logo.png" alt="Logo" width={58} height={58} />
+                        <Image src="/images/logo.png" alt="Logo" width={58} height={74} className="w-auto h-auto max-w-[58px] max-h-[58px]" />
                         <div className="hidden lg:block">
                             <div className="text-lg font-bold text-gray-900">SPZOZ GOZ</div>
                             <div className="text-sm text-gray-600">Łopuszno</div>
@@ -117,48 +183,77 @@ export function Header({ menuItems = [] }: HeaderProps) {
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <nav className="hidden lg:block" role="navigation" aria-label="Nawigacja główna">
-                        <ul className="flex items-center space-x-8">
-                            {hierarchicalItems.map((item) => (
-                                <li
-                                    key={item.id}
-                                    className="relative group"
-                                    onMouseEnter={() => item.children && item.children.length > 0 && handleMouseEnter(item.id)}
-                                    onMouseLeave={handleMouseLeave}
-                                >
-                                    <Link
-                                        href={item.url}
-                                        className={`flex items-center gap-1 font-medium transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-blue-600 rounded px-3 py-2 ${
-                                            pathname === item.url ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'
-                                        }`}
-                                    >
-                                        {item.title}
-                                        {item.children && item.children.length > 0 && (
-                                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${activeDropdown === item.id ? 'transform rotate-180' : ''}`} />
-                                        )}
-                                    </Link>
+                    <nav ref={menuRef} className="hidden lg:block" role="navigation" aria-label="Nawigacja główna">
+                        <ul className="flex items-center space-x-2">
+                            {hierarchicalItems.map((item) => {
+                                const hasChildren = item.children && item.children.length > 0;
+                                const isActive = pathname === item.url;
+                                const isDropdownOpen = activeDropdown === item.id;
 
-                                    {/* Dropdown Menu */}
-                                    {item.children && item.children.length > 0 && (
-                                        <div
-                                            className={`absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 transition-all duration-200 origin-top-left ${
-                                                activeDropdown === item.id ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-                                            }`}
+                                return (
+                                    <li key={item.id} className="relative menu-item" onMouseEnter={() => hasChildren && handleMouseEnter(item.id)} onMouseLeave={handleMouseLeave}>
+                                        <Link
+                                            href={item.url}
+                                            className={`
+                                                flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm
+                                                transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500
+                                                hover:bg-blue-50 hover:text-blue-700
+                                                ${isActive ? 'text-blue-700 bg-blue-50' : 'text-gray-700'}
+                                                ${isDropdownOpen ? 'bg-blue-50 text-blue-700' : ''}
+                                            `}
+                                            onKeyDown={(e) => handleKeyDown(e, item.id, Boolean(hasChildren))}
+                                            aria-expanded={hasChildren ? isDropdownOpen : undefined}
+                                            aria-haspopup={hasChildren ? 'menu' : undefined}
                                         >
-                                            <div className="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-                                            {item.children.map((child) => (
-                                                <Link
-                                                    key={child.id}
-                                                    href={child.url}
-                                                    className="block px-4 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 border-l-4 border-transparent hover:border-blue-600"
+                                            <span>{item.title}</span>
+                                            {hasChildren && (
+                                                <ChevronDown
+                                                    className={`
+                                                        h-4 w-4 transition-transform duration-200 ease-in-out
+                                                        ${isDropdownOpen ? 'rotate-180' : ''}
+                                                    `}
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                        </Link>
+
+                                        {/* Dropdown Menu */}
+                                        {hasChildren && isDropdownOpen && (
+                                            <div className="absolute top-full left-0 mt-1 z-50" onMouseEnter={handleSubmenuMouseEnter} onMouseLeave={handleSubmenuMouseLeave}>
+                                                <div
+                                                    ref={(el) => {
+                                                        if (el) {
+                                                            dropdownRefs.current.set(item.id, el);
+                                                        }
+                                                    }}
+                                                    className="min-w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 animate-quick-fade-in"
+                                                    role="menu"
+                                                    aria-label={`Podmenu dla ${item.title}`}
                                                 >
-                                                    <div className="font-medium">{child.title}</div>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
+                                                    {/* Submenu items */}
+                                                    {item.children?.map((child) => {
+                                                        const isChildActive = pathname === child.url;
+                                                        return (
+                                                            <Link
+                                                                key={child.id}
+                                                                href={child.url}
+                                                                className={`
+                                                                    block px-4 py-3 text-sm font-medium transition-colors duration-150
+                                                                    hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700
+                                                                    ${isChildActive ? 'text-blue-700 bg-blue-50' : 'text-gray-700'}
+                                                                `}
+                                                                role="menuitem"
+                                                            >
+                                                                {child.title}
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </nav>
 

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { NewsItem } from '../types';
+import { Edit, Trash2 } from 'lucide-react';
+import { NewsItem } from '@/lib/types/news';
 
 interface NewsManagementProps {
     news: NewsItem[];
@@ -82,7 +83,7 @@ export function NewsManagement({ news, onSave, onDelete }: NewsManagementProps) 
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {news.map((item) => (
-                                        <tr key={item.id}>
+                                        <tr key={item.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.title}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <Badge
@@ -94,18 +95,31 @@ export function NewsManagement({ news, onSave, onDelete }: NewsManagementProps) 
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.created_at).toLocaleDateString('pl-PL')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <Button variant="outline" size="sm" onClick={() => setEditingNews(item)}>
-                                                    Edytuj
+                                                <Button variant="outline" size="sm" onClick={() => setEditingNews(item)} title="Edytuj aktualność">
+                                                    <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="destructive" size="sm" onClick={() => onDelete('news', item.id)}>
-                                                    Usuń
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => onDelete('news', item.id)}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    title="Usuń aktualność"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {news.length === 0 && <p className="text-center text-gray-500 py-4">Brak aktualności.</p>}
+                            {news.length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="text-gray-500">
+                                        <h3 className="text-lg font-medium mb-2">Brak aktualności</h3>
+                                        <p className="text-sm">Rozpocznij od dodania pierwszej aktualności.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>
