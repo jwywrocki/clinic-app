@@ -36,6 +36,16 @@ export default function PolishAdminPanel() {
     const [loading, setLoading] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+    // Loading states for different operations
+    const [isSavingContact, setIsSavingContact] = useState(false);
+    const [isSavingPage, setIsSavingPage] = useState(false);
+    const [isSavingNews, setIsSavingNews] = useState(false);
+    const [isSavingService, setIsSavingService] = useState(false);
+    const [isSavingDoctor, setIsSavingDoctor] = useState(false);
+    const [isSavingMenu, setIsSavingMenu] = useState(false);
+    const [isSavingUser, setIsSavingUser] = useState(false);
+    const [isSavingSurvey, setIsSavingSurvey] = useState(false);
+
     // Data states
     const [users, setUsers] = useState<User[]>([]);
     const [pages, setPages] = useState<Page[]>([]);
@@ -147,6 +157,22 @@ export default function PolishAdminPanel() {
         }
     };
 
+    const refreshContactGroups = async () => {
+        try {
+            const response = await fetch('/api/contact_groups', { cache: 'no-store' });
+            if (response.ok) {
+                const contactGroupsData = await response.json();
+                if (Array.isArray(contactGroupsData)) {
+                    setContactGroups(contactGroupsData);
+                } else if (contactGroupsData && Array.isArray(contactGroupsData.data)) {
+                    setContactGroups(contactGroupsData.data);
+                }
+            }
+        } catch (error) {
+            console.error('Błąd odświeżania grup kontaktowych:', error);
+        }
+    };
+
     useEffect(() => {
         const checkLoginStatus = async () => {
             const response = await fetch('/api/auth/status', { cache: 'no-store' });
@@ -194,96 +220,131 @@ export default function PolishAdminPanel() {
         return false;
     };
 
-    const savePage = (d: Partial<Page>) =>
-        saveEntity<Page>(
-            'pages',
-            {
-                title: d.title,
-                slug: d.slug,
-                content: d.content,
-                meta_description: d.meta_description || '',
-                is_published: d.is_published,
-                created_by: currentUser?.id,
-            },
-            d.id || null,
-            setPages,
-            pages,
-            () => {}
-        );
+    const savePage = async (d: Partial<Page>) => {
+        setIsSavingPage(true);
+        try {
+            await saveEntity<Page>(
+                'pages',
+                {
+                    title: d.title,
+                    slug: d.slug,
+                    content: d.content,
+                    meta_description: d.meta_description || '',
+                    is_published: d.is_published,
+                    created_by: currentUser?.id,
+                },
+                d.id || null,
+                setPages,
+                pages,
+                () => {}
+            );
+        } finally {
+            setIsSavingPage(false);
+        }
+    };
 
-    const saveNews = (d: Partial<NewsItem>) =>
-        saveEntity<NewsItem>(
-            'news',
-            {
-                title: d.title,
-                content: d.content || '',
-                is_published: d.is_published || false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            },
-            d.id || null,
-            setNews,
-            news,
-            () => {}
-        );
+    const saveNews = async (d: Partial<NewsItem>) => {
+        setIsSavingNews(true);
+        try {
+            await saveEntity<NewsItem>(
+                'news',
+                {
+                    title: d.title,
+                    content: d.content || '',
+                    is_published: d.is_published || false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                },
+                d.id || null,
+                setNews,
+                news,
+                () => {}
+            );
+        } finally {
+            setIsSavingNews(false);
+        }
+    };
 
-    const saveService = (d: Partial<Service>) =>
-        saveEntity<Service>(
-            'services',
-            {
-                title: d.title,
-                description: d.description || '',
-                icon: d.icon || '',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            },
-            d.id || null,
-            setServices,
-            services,
-            () => {}
-        );
+    const saveService = async (d: Partial<Service>) => {
+        setIsSavingService(true);
+        try {
+            await saveEntity<Service>(
+                'services',
+                {
+                    title: d.title,
+                    description: d.description || '',
+                    icon: d.icon || '',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                },
+                d.id || null,
+                setServices,
+                services,
+                () => {}
+            );
+        } finally {
+            setIsSavingService(false);
+        }
+    };
 
-    const saveDoctor = (d: Partial<Doctor>) =>
-        saveEntity<Doctor>(
-            'doctors',
-            {
-                first_name: d.first_name,
-                last_name: d.last_name,
-                specialization: d.specialization,
-                description: d.description || '',
-                image_url: d.image_url || '',
-                is_active: d.is_active,
-                order_position: d.order_position || 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            },
-            d.id || null,
-            setDoctors,
-            doctors,
-            () => {}
-        );
+    const saveDoctor = async (d: Partial<Doctor>) => {
+        setIsSavingDoctor(true);
+        try {
+            await saveEntity<Doctor>(
+                'doctors',
+                {
+                    first_name: d.first_name,
+                    last_name: d.last_name,
+                    specialization: d.specialization,
+                    bio: d.bio || '',
+                    image_url: d.image_url || '',
+                    schedule: d.schedule || '',
+                    is_active: d.is_active,
+                    order_position: d.order_position || 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                },
+                d.id || null,
+                setDoctors,
+                doctors,
+                () => {}
+            );
+        } finally {
+            setIsSavingDoctor(false);
+        }
+    };
 
-    const saveMenuItem = (d: Partial<MenuItem>) =>
-        saveEntity<MenuItem>(
-            'menu_items',
-            {
-                title: d.title,
-                url: d.url,
-                order_position: d.order_position || 0,
-                parent_id: d.parent_id,
-                is_published: d.is_published,
-                created_by: currentUser?.id,
-            },
-            d.id || null,
-            setMenuItems,
-            menuItems,
-            () => MenuCache.clearCache()
-        );
+    const saveMenuItem = async (d: Partial<MenuItem>) => {
+        setIsSavingMenu(true);
+        try {
+            await saveEntity<MenuItem>(
+                'menu_items',
+                {
+                    title: d.title,
+                    url: d.url,
+                    order_position: d.order_position || 0,
+                    parent_id: d.parent_id,
+                    is_published: d.is_published,
+                    created_by: currentUser?.id,
+                },
+                d.id || null,
+                setMenuItems,
+                menuItems,
+                () => MenuCache.clearCache()
+            );
+        } finally {
+            setIsSavingMenu(false);
+        }
+    };
 
     const saveSurvey = async (surveyData: any) => {
+        setIsSavingSurvey(true);
         try {
-            const response = await fetch('/api/surveys', {
-                method: surveyData.id ? 'PUT' : 'POST',
+            const url = surveyData.id ? `/api/surveys?id=${surveyData.id}` : '/api/surveys';
+            const method = surveyData.id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(surveyData),
             });
@@ -308,25 +369,28 @@ export default function PolishAdminPanel() {
                 variant: 'destructive',
             });
             throw error;
+        } finally {
+            setIsSavingSurvey(false);
         }
     };
 
     const handleSaveContactGroup = async (groupWithDetails: ContactGroup) => {
-        const { contact_details, ...groupDataToSave } = groupWithDetails;
-        const isNewGroup = !groupDataToSave.id || groupDataToSave.id.startsWith('new-group-temp-id');
-
-        let savedGroupResponse: ContactGroup | null = null;
-
-        const groupUrl = isNewGroup ? '/api/contact_groups' : `/api/contact_groups/${groupDataToSave.id}`;
-        const groupMethod = isNewGroup ? 'POST' : 'PATCH';
-
-        let payloadForGroup: Partial<ContactGroup> = { ...groupDataToSave };
-        if (isNewGroup) {
-            const { id, ...rest } = payloadForGroup;
-            payloadForGroup = rest;
-        }
-
+        setIsSavingContact(true);
         try {
+            const { contact_details, ...groupDataToSave } = groupWithDetails;
+            const isNewGroup = !groupDataToSave.id || groupDataToSave.id.startsWith('new-group-temp-id');
+
+            let savedGroupResponse: ContactGroup | null = null;
+
+            const groupUrl = isNewGroup ? '/api/contact_groups' : `/api/contact_groups/${groupDataToSave.id}`;
+            const groupMethod = isNewGroup ? 'POST' : 'PATCH';
+
+            let payloadForGroup: Partial<ContactGroup> = { ...groupDataToSave };
+            if (isNewGroup) {
+                const { id, ...rest } = payloadForGroup;
+                payloadForGroup = rest;
+            }
+
             const groupResponse = await fetch(groupUrl, {
                 method: groupMethod,
                 headers: { 'Content-Type': 'application/json' },
@@ -398,10 +462,14 @@ export default function PolishAdminPanel() {
             });
 
             toast({ title: 'Sukces', description: 'Grupa kontaktów i jej szczegóły zapisane.', variant: 'success' });
+
+            await refreshContactGroups();
         } catch (error: any) {
             console.error('Błąd zapisu grupy kontaktów lub jej szczegółów:', error);
             toast({ title: 'Błąd Ogólny Zapisu', description: error.message, variant: 'destructive' });
             fetchData();
+        } finally {
+            setIsSavingContact(false);
         }
     };
 
@@ -446,20 +514,26 @@ export default function PolishAdminPanel() {
         }
     };
 
-    const saveUser = (d: Partial<User>) =>
-        saveEntity<User>(
-            'users',
-            {
-                username: d.username,
-                password: d.password,
-                is_active: d.is_active,
-                role: d.role,
-            },
-            d.id || null,
-            setUsers,
-            users,
-            () => {}
-        );
+    const saveUser = async (d: Partial<User>) => {
+        setIsSavingUser(true);
+        try {
+            await saveEntity<User>(
+                'users',
+                {
+                    username: d.username,
+                    password: d.password,
+                    is_active: d.is_active,
+                    role: d.role,
+                },
+                d.id || null,
+                setUsers,
+                users,
+                () => {}
+            );
+        } finally {
+            setIsSavingUser(false);
+        }
+    };
 
     type TableKey = 'pages' | 'news' | 'services' | 'doctors' | 'users' | 'menu_items';
 
@@ -575,6 +649,35 @@ export default function PolishAdminPanel() {
         }
     };
 
+    useEffect(() => {
+        const savedTab = typeof window !== 'undefined' ? localStorage.getItem('adminActiveTab') : null;
+        if (savedTab) setActiveTab(savedTab);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('adminActiveTab', activeTab);
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        let timeoutId: NodeJS.Timeout | null = null;
+        const logoutAfterInactivity = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                handleLogout();
+            }, 5 * 60 * 1000); // 5 minut
+        };
+
+        const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+        events.forEach((event) => window.addEventListener(event, logoutAfterInactivity));
+        logoutAfterInactivity();
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            events.forEach((event) => window.removeEventListener(event, logoutAfterInactivity));
+        };
+    }, []);
+
     if (!isLoggedIn) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -608,12 +711,20 @@ export default function PolishAdminPanel() {
                     <Header activeTab={activeTab} />
                     <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
                         {activeTab === 'dashboard' && <Dashboard pages={pages} services={services} news={news} doctors={doctors} />}
-                        {activeTab === 'news' && hasPermission('manage_pages') && <NewsManagement news={news} onSave={saveNews} onDelete={(id) => deleteItem('news', id)} />}
-                        {activeTab === 'pages' && hasPermission('manage_pages') && <PagesManagement pages={pages} onSave={savePage} onDelete={(id) => deleteItem('pages', id)} />}
-                        {activeTab === 'menus' && hasPermission('manage_menus') && <MenuManagement menuItems={menuItems} onSave={saveMenuItem} onDelete={(id) => deleteItem('menu_items', id)} />}
-                        {activeTab === 'doctors' && hasPermission('manage_pages') && <DoctorsManagement doctors={doctors} onSave={saveDoctor} onDelete={(id) => deleteItem('doctors', id)} />}
-                        {activeTab === 'services' && hasPermission('manage_pages') && <ServicesManagement services={services} onSave={saveService} onDelete={(id) => deleteItem('services', id)} />}
-                        {activeTab === 'surveys' && hasPermission('manage_pages') && <SurveysManagement onSave={saveSurvey} currentUser={currentUser} />}
+                        {activeTab === 'news' && hasPermission('manage_pages') && <NewsManagement news={news} onSave={saveNews} onDelete={(id) => deleteItem('news', id)} isSaving={isSavingNews} />}
+                        {activeTab === 'pages' && hasPermission('manage_pages') && (
+                            <PagesManagement pages={pages} onSave={savePage} onDelete={(id) => deleteItem('pages', id)} isSaving={isSavingPage} />
+                        )}
+                        {activeTab === 'menus' && hasPermission('manage_menus') && (
+                            <MenuManagement menuItems={menuItems} onSave={saveMenuItem} onDelete={(id) => deleteItem('menu_items', id)} isSaving={isSavingMenu} />
+                        )}
+                        {activeTab === 'doctors' && hasPermission('manage_pages') && (
+                            <DoctorsManagement doctors={doctors} onSave={saveDoctor} onDelete={(id) => deleteItem('doctors', id)} isSaving={isSavingDoctor} />
+                        )}
+                        {activeTab === 'services' && hasPermission('manage_pages') && (
+                            <ServicesManagement services={services} onSave={saveService} onDelete={(id) => deleteItem('services', id)} isSaving={isSavingService} />
+                        )}
+                        {activeTab === 'surveys' && hasPermission('manage_pages') && <SurveysManagement onSave={saveSurvey} currentUser={currentUser} isSaving={isSavingSurvey} />}
                         {activeTab === 'contact' && hasPermission('manage_contact') && (
                             <ContactManagement
                                 contactGroups={contactGroups}
@@ -621,10 +732,11 @@ export default function PolishAdminPanel() {
                                 onDeleteGroup={handleDeleteContactGroup}
                                 onDeleteDetail={handleDeleteContactDetail}
                                 onReorderGroups={handleReorderContactGroups}
+                                isSaving={isSavingContact}
                             />
                         )}
                         {activeTab === 'users' && hasPermission('manage_users') && (
-                            <UsersManagement users={users} roles={roles} onSave={saveUser} onDelete={(id) => deleteItem('users', id)} currentUser={currentUser} />
+                            <UsersManagement users={users} roles={roles} onSave={saveUser} onDelete={(id) => deleteItem('users', id)} currentUser={currentUser} isSaving={isSavingUser} />
                         )}
                         {activeTab === 'settings' && hasPermission('manage_pages') && (
                             <Settings

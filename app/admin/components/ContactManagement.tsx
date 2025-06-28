@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { AnimatedSection } from '@/components/ui/animated-section';
 import { ContactGroup, ContactDetail } from '@/lib/types/contact';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { stripHtmlTags } from '@/lib/html-sanitizer';
-import { PlusCircle, MinusCircle, Edit3, Trash2, GripVertical } from 'lucide-react';
+import { Plus, MinusCircle, Edit3, Trash2, GripVertical } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -23,9 +23,10 @@ interface ContactManagementProps {
     onDeleteGroup: (groupId: string) => Promise<void>;
     onDeleteDetail: (detailId: string, groupId: string) => Promise<void>;
     onReorderGroups?: (reorderedGroups: ContactGroup[]) => Promise<void>;
+    isSaving?: boolean;
 }
 
-export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, onDeleteDetail, onReorderGroups }: ContactManagementProps) {
+export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, onDeleteDetail, onReorderGroups, isSaving = false }: ContactManagementProps) {
     const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
 
     const sensors = useSensors(
@@ -101,79 +102,97 @@ export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, o
         });
     };
 
-    const handleRemoveDetailValue = async (groupId: string, detailId: string) => {
-        if (!editingGroup) return;
+    const handleRemoveDetailValue = useCallback(
+        async (groupId: string, detailId: string) => {
+            if (!editingGroup) return;
 
-        if (detailId.startsWith('new-')) {
-            setEditingGroup((prev) => ({
-                ...prev!,
-                contact_details: prev!.contact_details?.filter((d) => d.id !== detailId),
-            }));
-        } else {
-            await onDeleteDetail(detailId, editingGroup.id);
-            setEditingGroup((prev) => ({
-                ...prev!,
-                contact_details: prev!.contact_details?.filter((d) => d.id !== detailId),
-            }));
-        }
-    };
-
-    const handleDetailValueChange = (originalGroupId: string, detailId: string, value: string) => {
-        if (!editingGroup) return;
-
-        setEditingGroup((prev) => ({
-            ...prev!,
-            contact_details: prev!.contact_details?.map((d) => (d.id === detailId ? { ...d, value } : d)),
-        }));
-    };
-
-    function SortableContactDetail({ detail, editingGroupId, onEdit, onDelete }: { detail: ContactDetail; editingGroupId: string; onEdit: (value: string) => void; onDelete: () => void }) {
-        const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
-
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
-        };
-
-        const getContactTypeLabel = (type: string) => {
-            switch (type) {
-                case 'phone':
-                    return 'Telefon';
-                case 'email':
-                    return 'Email';
-                case 'address':
-                    return 'Adres';
-                case 'hours':
-                    return 'Godziny';
-                case 'emergency_contact':
-                    return 'Kontakt awaryjny';
-                default:
-                    return type;
+            if (detailId.startsWith('new-')) {
+                setEditingGroup((prev) => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        contact_details: prev.contact_details?.filter((d) => d.id !== detailId),
+                    };
+                });
+            } else {
+                await onDeleteDetail(detailId, editingGroup.id);
+                setEditingGroup((prev) => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        contact_details: prev.contact_details?.filter((d) => d.id !== detailId),
+                    };
+                });
             }
-        };
+        },
+        [editingGroup?.id, onDeleteDetail]
+    );
 
-        return (
-            <div ref={setNodeRef} style={style} className={`p-3 border rounded bg-white ${isDragging ? 'shadow-lg' : ''}`}>
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                        <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded" {...attributes} {...listeners}>
-                            <GripVertical className="h-4 w-4 text-gray-400" />
+    const handleDetailValueChange = useCallback(
+        (originalGroupId: string, detailId: string, value: string) => {
+            if (!editingGroup) return;
+
+            setEditingGroup((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    contact_details: prev.contact_details?.map((d) => (d.id === detailId ? { ...d, value } : d)),
+                };
+            });
+        },
+        [editingGroup?.id]
+    );
+
+    const SortableContactDetail = useCallback(
+        ({ detail, editingGroupId, onEdit, onDelete }: { detail: ContactDetail; editingGroupId: string; onEdit: (value: string) => void; onDelete: () => void }) => {
+            const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
+
+            const style = {
+                transform: CSS.Transform.toString(transform),
+                transition,
+                opacity: isDragging ? 0.5 : 1,
+            };
+
+            const getContactTypeLabel = (type: string) => {
+                switch (type) {
+                    case 'phone':
+                        return 'Telefon';
+                    case 'email':
+                        return 'Email';
+                    case 'address':
+                        return 'Adres';
+                    case 'hours':
+                        return 'Godziny';
+                    case 'emergency_contact':
+                        return 'Kontakt awaryjny';
+                    default:
+                        return type;
+                }
+            };
+
+            return (
+                <div ref={setNodeRef} style={style} className={`p-3 border rounded bg-white ${isDragging ? 'shadow-lg' : ''}`}>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                            <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded" {...attributes} {...listeners}>
+                                <GripVertical className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <Label>{getContactTypeLabel(detail.type)}</Label>
                         </div>
-                        <Label>{getContactTypeLabel(detail.type)}</Label>
+                        <Button variant="outline" size="sm" onClick={onDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50" title="Usuń szczegół kontaktowy">
+                            <MinusCircle className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button variant="outline" size="sm" onClick={onDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50" title="Usuń szczegół kontaktowy">
-                        <MinusCircle className="h-4 w-4" />
-                    </Button>
+                    {detail.type === 'phone' || detail.type === 'email' ? (
+                        <Input value={detail.value} onChange={(e) => onEdit(e.target.value)} placeholder={detail.type === 'phone' ? 'Numer telefonu' : 'Adres email'} key={`input-${detail.id}`} />
+                    ) : detail.type === 'address' || detail.type === 'hours' || detail.type === 'emergency_contact' ? (
+                        <RichTextEditor value={detail.value} onChange={onEdit} key={`editor-${detail.id}`} />
+                    ) : null}
                 </div>
-                {detail.type === 'phone' || detail.type === 'email' ? (
-                    <Input value={detail.value} onChange={(e) => onEdit(e.target.value)} placeholder={detail.type === 'phone' ? 'Numer telefonu' : 'Adres email'} />
-                ) : detail.type === 'address' || detail.type === 'hours' || detail.type === 'emergency_contact' ? (
-                    <RichTextEditor value={detail.value} onChange={onEdit} />
-                ) : null}
-            </div>
-        );
-    }
+            );
+        },
+        []
+    );
 
     function SortableGroupCard({ group, onEdit, onDelete }: { group: ContactGroup; onEdit: (group: ContactGroup) => void; onDelete: (groupId: string) => void }) {
         const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.id });
@@ -291,14 +310,14 @@ export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, o
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzanie Danymi Kontaktowymi</CardTitle>
                         <Button onClick={handleNewGroup}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Grupę Kontaktową
+                            <Plus className="h-4 w-4 mr-2" /> Dodaj grupę kontaktową
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {editingGroup ? (
                         <div className="space-y-6 p-4 border rounded-lg bg-gray-50">
-                            <h3 className="text-lg font-semibold">{editingGroup.id ? 'Edytuj' : 'Dodaj'} Grupę Kontaktową</h3>
+                            <h3 className="text-lg font-semibold">{editingGroup.id ? 'Edytuj' : 'Dodaj'} Grupę kontaktową</h3>
                             <div>
                                 <Label htmlFor="groupLabel">Etykieta Grupy</Label>
                                 <Input
@@ -325,15 +344,12 @@ export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, o
                                         <SortableContext items={editingGroup.contact_details.map((detail) => detail.id)} strategy={verticalListSortingStrategy}>
                                             {editingGroup.contact_details
                                                 .sort((a, b) => (a.order_position || 0) - (b.order_position || 0))
-                                                .map((detail) => (
-                                                    <SortableContactDetail
-                                                        key={detail.id}
-                                                        detail={detail}
-                                                        editingGroupId={editingGroup.id}
-                                                        onEdit={(value) => handleDetailValueChange(editingGroup.id, detail.id, value)}
-                                                        onDelete={() => handleRemoveDetailValue(editingGroup.id, detail.id)}
-                                                    />
-                                                ))}
+                                                .map((detail) => {
+                                                    const onEdit = (value: string) => handleDetailValueChange(editingGroup.id, detail.id, value);
+                                                    const onDelete = () => handleRemoveDetailValue(editingGroup.id, detail.id);
+
+                                                    return <SortableContactDetail key={`detail-${detail.id}`} detail={detail} editingGroupId={editingGroup.id} onEdit={onEdit} onDelete={onDelete} />;
+                                                })}
                                         </SortableContext>
                                     </DndContext>
                                 ) : null}
@@ -341,31 +357,33 @@ export function ContactManagement({ contactGroups, onSaveGroup, onDeleteGroup, o
 
                             <div className="flex space-x-2 mt-2">
                                 <Button onClick={() => handleAddDetailValue(editingGroup.id, 'phone')} variant="outline" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Telefon
+                                    <Plus className="h-4 w-4 mr-2" /> Dodaj telefon
                                 </Button>
                                 <Button onClick={() => handleAddDetailValue(editingGroup.id, 'email')} variant="outline" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Email
+                                    <Plus className="h-4 w-4 mr-2" /> Dodaj email
                                 </Button>
                                 {!editingGroup.contact_details?.find((d) => d.type === 'address') && (
                                     <Button onClick={() => handleAddDetailValue(editingGroup.id, 'address' as any)} variant="outline" size="sm">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Adres
+                                        <Plus className="h-4 w-4 mr-2" /> Dodaj adres
                                     </Button>
                                 )}
                                 {!editingGroup.contact_details?.find((d) => d.type === 'hours') && (
                                     <Button onClick={() => handleAddDetailValue(editingGroup.id, 'hours' as any)} variant="outline" size="sm">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Godziny
+                                        <Plus className="h-4 w-4 mr-2" /> Dodaj godziny
                                     </Button>
                                 )}
                                 {!editingGroup.contact_details?.find((d) => d.type === 'emergency_contact') && (
                                     <Button onClick={() => handleAddDetailValue(editingGroup.id, 'emergency_contact' as any)} variant="outline" size="sm">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj Kontakt Alarmowy
+                                        <Plus className="h-4 w-4 mr-2" /> Dodaj kontakt alarmowy
                                     </Button>
                                 )}
                             </div>
 
                             <div className="flex gap-2 pt-4 border-t">
-                                <Button onClick={handleSaveGroup}>Zapisz Grupę</Button>
-                                <Button type="button" variant="outline" onClick={() => setEditingGroup(null)}>
+                                <Button onClick={handleSaveGroup} disabled={isSaving}>
+                                    {isSaving ? 'Zapisywanie...' : 'Zapisz grupę'}
+                                </Button>
+                                <Button type="button" variant="outline" onClick={() => setEditingGroup(null)} disabled={isSaving}>
                                     Anuluj
                                 </Button>
                             </div>

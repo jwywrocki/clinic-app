@@ -93,13 +93,7 @@ export function ServicesSection() {
                         <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full mb-4">
                             <span className="text-blue-600 text-sm font-medium">NASZE SPECJALIZACJE</span>
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                            Kompleksowa opieka{' '}
-                            <span className="text-blue-600 relative">
-                                medyczna
-                                <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
-                            </span>
-                        </h2>
+                        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Kompleksowa opieka medyczna</h2>
                         <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                             Oferujemy szeroki zakres usług medycznych w nowoczesnych warunkach. Nasz zespół doświadczonych specjalistów zapewnia najwyższą jakość opieki zdrowotnej.
                         </p>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { User } from '@/lib/types/users';
 
 interface UsersManagementProps {
@@ -16,9 +16,10 @@ interface UsersManagementProps {
     currentUser: User | null;
     onSave: (user: Partial<User>) => void;
     onDelete: (table: string, id: string) => Promise<void>;
+    isSaving?: boolean;
 }
 
-export function UsersManagement({ users, roles, currentUser, onSave, onDelete }: UsersManagementProps) {
+export function UsersManagement({ users, roles, currentUser, onSave, onDelete, isSaving = false }: UsersManagementProps) {
     const [editingUser, setEditingUser] = useState<User | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +56,10 @@ export function UsersManagement({ users, roles, currentUser, onSave, onDelete }:
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzaj Użytkownikami</CardTitle>
-                        <Button onClick={handleNewUser}>Dodaj Użytkownika</Button>
+                        <Button onClick={handleNewUser}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj użytkownika
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -108,8 +112,10 @@ export function UsersManagement({ users, roles, currentUser, onSave, onDelete }:
                                 <Label htmlFor="userActive">Aktywny</Label>
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit">Zapisz</Button>
-                                <Button variant="outline" onClick={() => setEditingUser(null)}>
+                                <Button type="submit" disabled={isSaving}>
+                                    {isSaving ? 'Zapisywanie...' : 'Zapisz'}
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingUser(null)} disabled={isSaving}>
                                     Anuluj
                                 </Button>
                             </div>

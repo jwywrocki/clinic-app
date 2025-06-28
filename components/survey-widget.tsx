@@ -62,18 +62,15 @@ function SurveyWidgetComponent({ surveyId, preloadedSurvey }: SurveyWidgetProps)
         e.preventDefault();
         if (!survey) return;
 
-        // Sprawdź wymagane pytania (single i multi są wymagane, text są opcjonalne)
         const requiredQuestions = survey.questions?.filter((q) => q.type === 'single' || q.type === 'multi') || [];
         const missingAnswers = requiredQuestions.filter((q) => {
             const answer = answers[q.id];
             if (!answer) return true;
 
-            // Dla pytań single/multi sprawdź czy wybrano opcję
             return !answer.option_id && (!answer.answer_text || answer.answer_text.trim() === '');
         });
 
         if (missingAnswers.length > 0) {
-            // Pokaż bardziej szczegółowy komunikat błędu
             const missingQuestionNumbers = missingAnswers.map((q) => {
                 const questionIndex = survey.questions?.findIndex((sq) => sq.id === q.id) || 0;
                 return `${questionIndex + 1}`;
@@ -86,12 +83,11 @@ function SurveyWidgetComponent({ surveyId, preloadedSurvey }: SurveyWidgetProps)
                 duration: 8000, // Dłużej wyświetlaj komunikat
             });
 
-            // Przewiń do pierwszego niewypełnionego pytania
             const firstMissingQuestion = missingAnswers[0];
             const questionElement = document.querySelector(`[data-question-id="${firstMissingQuestion.id}"]`);
             if (questionElement) {
                 questionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Dodaj czerwoną ramkę dla lepszej widoczności
+
                 questionElement.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
                 setTimeout(() => {
                     questionElement.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50');
@@ -295,5 +291,4 @@ function SurveyWidgetComponent({ surveyId, preloadedSurvey }: SurveyWidgetProps)
     );
 }
 
-// Memoize the component to prevent unnecessary re-renders
 export const SurveyWidget = memo(SurveyWidgetComponent);

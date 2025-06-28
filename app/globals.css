@@ -441,3 +441,26 @@ html {
 .animate-fade-in-no-shift.animate-visible {
     opacity: 1;
 }
+
+.editor-columns {
+    display: flex;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .editor-columns {
+        flex-direction: column;
+    }
+    .editor-columns > .editor-column {
+        width: 100%;
+    }
+}
+
+.editor-columns img {
+    width: 300px !important;
+    height: auto !important;
+    max-width: 300px !important;
+    min-width: 300px !important;
+    display: block !important;
+    margin: 0.5rem 0 !important;
+}

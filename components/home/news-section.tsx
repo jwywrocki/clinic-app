@@ -66,14 +66,7 @@ export function NewsSection() {
                         <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full mb-4">
                             <span className="text-blue-600 text-sm font-medium">AKTUALNOŚCI</span>
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                            Najnowsze{' '}
-                            <span className="text-blue-600 relative">
-                                informacje
-                                <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
-                            </span>
-                        </h2>
-                        <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">Bądź na bieżąco z najważniejszymi informacjami dotyczącymi naszego ośrodka zdrowia</p>
+                        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Najnowsze informacje</h2>
                     </div>
                 </AnimatedSection>
 

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Page } from '@/lib/types/pages';
 import { Survey } from '@/lib/types/surveys';
 
@@ -16,9 +16,10 @@ interface PagesManagementProps {
     pages: Page[];
     onSave: (page: Partial<Page>) => void;
     onDelete: (id: string) => Promise<void>;
+    isSaving?: boolean;
 }
 
-export function PagesManagement({ pages, onSave, onDelete }: PagesManagementProps) {
+export function PagesManagement({ pages, onSave, onDelete, isSaving = false }: PagesManagementProps) {
     const [editingPage, setEditingPage] = useState<Page | null>(null);
     const [surveys, setSurveys] = useState<Survey[]>([]);
 
@@ -65,7 +66,10 @@ export function PagesManagement({ pages, onSave, onDelete }: PagesManagementProp
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzaj Stronami</CardTitle>
-                        <Button onClick={handleNewPage}>Dodaj Nową Stronę</Button>
+                        <Button onClick={handleNewPage}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj nową stronę
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -110,8 +114,10 @@ export function PagesManagement({ pages, onSave, onDelete }: PagesManagementProp
                                 <Label htmlFor="pagePublished">Opublikowana</Label>
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit">Zapisz</Button>
-                                <Button variant="outline" onClick={() => setEditingPage(null)}>
+                                <Button type="submit" disabled={isSaving}>
+                                    {isSaving ? 'Zapisywanie...' : 'Zapisz'}
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingPage(null)} disabled={isSaving}>
                                     Anuluj
                                 </Button>
                             </div>

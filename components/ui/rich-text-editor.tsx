@@ -21,6 +21,7 @@ import {
     Link as LinkIcon, // Renamed to avoid conflict with HTML Link element
     Palette,
     Paperclip, // Added for file uploads
+    Columns,
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -50,17 +51,19 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
     const [showTableDialog, setShowTableDialog] = useState(false);
     const [showImageDialog, setShowImageDialog] = useState(false);
     const [showLinkDialog, setShowLinkDialog] = useState(false);
-    const [showFileDialog, setShowFileDialog] = useState(false); // New state for file dialog
+    const [showFileDialog, setShowFileDialog] = useState(false);
+    const [showColumnsDialog, setShowColumnsDialog] = useState(false);
     const [imageUrl, setImageUrl] = useState('');
     const [imageAlt, setImageAlt] = useState('');
-    const [imageSourceType, setImageSourceType] = useState<'url' | 'upload'>('url'); // For image dialog
-    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null); // For image dialog
+    const [imageSourceType, setImageSourceType] = useState<'url' | 'upload'>('url');
+    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
     const [currentLinkUrl, setCurrentLinkUrl] = useState('');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [tableRows, setTableRows] = useState(3);
     const [tableCols, setTableCols] = useState(3);
     const [currentColor, setCurrentColor] = useState('#000000');
-    const [currentFontSize, setCurrentFontSize] = useState('3'); // Default to 12px (size 3)
+    const [currentFontSize, setCurrentFontSize] = useState('3');
+    const [columnsCount, setColumnsCount] = useState(2);
 
     const [formats, setFormats] = useState({
         bold: false,
@@ -73,6 +76,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
         alignRight: false,
         alignJustify: false,
     });
+
+    // Dodaj stan do śledzenia, czy kursor jest w bloku kolumnowym
+    const [inColumnsBlock, setInColumnsBlock] = useState(false);
+    const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
     const updateFormats = () => {
         setFormats({
@@ -274,7 +281,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
 
     const handleImageFileUpload = async () => {
         if (!selectedImageFile) return;
-
+        setImageUploadError(null);
         const formData = new FormData();
         formData.append('file', selectedImageFile);
 
@@ -283,20 +290,35 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                 method: 'POST',
                 body: formData,
             });
-
+            let errorData = null;
             if (!response.ok) {
-                console.error('Image upload failed', response.statusText);
-                throw new Error('Image upload failed');
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    errorData = { error: response.statusText };
+                }
+                if (errorData && errorData.error && errorData.error.includes('File size')) {
+                    setImageUploadError('Plik jest zbyt duży (maksymalnie 5MB).');
+                } else if (errorData && errorData.error) {
+                    setImageUploadError(errorData.error);
+                } else {
+                    setImageUploadError('Błąd podczas przesyłania obrazu.');
+                }
+                console.error('Image upload failed', errorData?.error || response.statusText);
+                return;
             }
-
             const data = await response.json();
             if (data.filePath) {
                 insertImage(data.filePath);
             } else {
+                setImageUploadError('Serwer nie zwrócił ścieżki do pliku.');
                 console.error('File path not returned from server for image upload');
             }
         } catch (error) {
+            // Nie rzucaj błędu, tylko loguj i ustaw komunikat
+            if (!imageUploadError) setImageUploadError('Błąd podczas przesyłania obrazu.');
             console.error('Error uploading image file:', error);
+            // Nie rzucaj dalej!
         }
     };
 
@@ -329,6 +351,86 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
         setShowTableDialog(false);
     };
 
+    const insertColumns = (count: number) => {
+        let selectedHtml = '';
+        const selection = window.getSelection();
+
+        if (savedRangeRef.current && selection) {
+            selection.removeAllRanges();
+            selection.addRange(savedRangeRef.current);
+        }
+        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(range.cloneContents());
+            selectedHtml = tempDiv.innerHTML;
+            range.deleteContents();
+        }
+
+        savedRangeRef.current = null;
+        let columnsHtml = `<div class=\"editor-columns columns-${count}\">`;
+        columnsHtml += `<div class=\"editor-column\">${selectedHtml || ''}</div>`;
+        for (let i = 2; i <= count; i++) {
+            columnsHtml += `<div class=\"editor-column\"></div>`;
+        }
+        columnsHtml += '</div><p></p>';
+        insertHtmlAtCursor(columnsHtml);
+        setShowColumnsDialog(false);
+        setTimeout(() => {
+            if (!editorRef.current) return;
+            const columnsBlock = editorRef.current.querySelector('.editor-columns');
+            if (columnsBlock) {
+                const firstCol = columnsBlock.querySelector('.editor-column');
+                if (firstCol) {
+                    const range = document.createRange();
+                    range.selectNodeContents(firstCol);
+                    range.collapse(false);
+                    const sel = window.getSelection();
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            }
+        }, 0);
+    };
+
+    useEffect(() => {
+        if (!editorRef.current) return;
+        const columns = editorRef.current.querySelectorAll('.editor-column');
+        columns.forEach((col) => {
+            if (col.innerHTML.trim() === '') {
+                col.setAttribute('data-placeholder', 'Kolumna');
+            } else {
+                col.removeAttribute('data-placeholder');
+            }
+        });
+    }, [value, editorRef.current]);
+
+    const removeColumnsAtSelection = () => {
+        if (!editorRef.current) return;
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+        let node = selection.anchorNode as HTMLElement | null;
+
+        while (node && node !== editorRef.current) {
+            if (node.nodeType === 1 && (node as HTMLElement).classList.contains('editor-columns')) {
+                const parent = node.parentNode;
+                if (parent) {
+                    const columns = Array.from(node.childNodes)
+                        .map((col) => (col as HTMLElement).innerHTML)
+                        .join('<br><br>');
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = columns;
+                    parent.replaceChild(tempDiv, node);
+                    onChange(editorRef.current.innerHTML || '');
+                }
+                break;
+            }
+            node = node.parentNode as HTMLElement | null;
+        }
+    };
+
     useEffect(() => {
         const handleSelectionChange = () => {
             if (document.activeElement === editorRef.current) {
@@ -337,6 +439,18 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                 if (fontSize && fontSizes.some((fs) => fs.value === fontSize)) {
                     setCurrentFontSize(fontSize);
                 }
+
+                const selection = window.getSelection();
+                let node = selection && (selection.anchorNode as HTMLElement | null);
+                let found = false;
+                while (node && node !== editorRef.current) {
+                    if (node.nodeType === 1 && (node as HTMLElement).classList.contains('editor-columns')) {
+                        found = true;
+                        break;
+                    }
+                    node = node.parentNode as HTMLElement | null;
+                }
+                setInColumnsBlock(found);
             }
         };
 
@@ -345,10 +459,76 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
     }, []);
 
     useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                const selection = window.getSelection();
+                if (!selection || selection.rangeCount === 0) return;
+                let node = selection.anchorNode as Node | null;
+                let inColumn = false;
+                let columnNode: HTMLElement | null = null;
+                while (node && node !== editor) {
+                    if (node.nodeType === 1 && (node as HTMLElement).classList.contains('editor-column')) {
+                        inColumn = true;
+                        columnNode = node as HTMLElement;
+                        break;
+                    }
+                    node = (node as HTMLElement).parentNode;
+                }
+                if (inColumn && columnNode) {
+                    e.preventDefault();
+                    const sel = window.getSelection();
+
+                    if (!sel) return;
+
+                    const range = sel.getRangeAt(0);
+                    const br1 = document.createElement('br');
+                    const br2 = document.createElement('br');
+
+                    range.insertNode(br2);
+                    range.insertNode(br1);
+                    range.setStartAfter(br2);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+
+                    setTimeout(() => {
+                        const columnsParent = columnNode!.parentElement;
+                        if (columnsParent && columnsParent.classList.contains('editor-columns')) {
+                            const columns = Array.from(columnsParent.children);
+                            columns.forEach((col) => {
+                                if (col !== columnNode && col.classList.contains('editor-column') && col.innerHTML.replace(/<br\s*\/?>(\s*)?/g, '').trim() === '') {
+                                    columnsParent.removeChild(col);
+                                }
+                            });
+                        }
+                    }, 0);
+                }
+            }
+        };
+        editor.addEventListener('keydown', handleKeyDown);
+        return () => editor.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    useEffect(() => {
         if (editorRef.current && !editorRef.current.innerHTML && value) {
             editorRef.current.innerHTML = value;
         }
     }, [value]);
+
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files ? e.target.files[0] : null;
+        setImageUploadError(null);
+        if (file && file.size > MAX_IMAGE_SIZE) {
+            setSelectedImageFile(null);
+            setImageUploadError('Plik jest zbyt duży (maksymalnie 5MB).');
+        } else {
+            setSelectedImageFile(file);
+        }
+    };
 
     return (
         <>
@@ -359,18 +539,17 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                     margin: 1em 0;
                     border: 1px solid #e5e7eb;
                 }
-
-                .editor-th {
-                    background-color: #f3f4f6;
-                    font-weight: 600;
-                    text-align: left;
-                    padding: 0.75rem;
-                    border: 1px solid #e5e7eb;
+                .editor-columns {
+                    display: flex;
+                    gap: 1.5rem;
+                    margin: 1em 0;
                 }
-
-                .editor-td {
+                .editor-columns > .editor-column {
+                    flex: 1 1 0;
+                    min-width: 0;
                     padding: 0.75rem;
                     border: 1px solid #e5e7eb;
+                    background: #fafbfc;
                 }
 
                 .editor-image {
@@ -395,6 +574,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                 .editor-content li {
                     margin: 0.5em 0;
                 }
+
+                .editor-column:empty:before {
+                    content: attr(data-placeholder);
+                    color: #bdbdbd;
+                    font-style: italic;
+                    pointer-events: none;
+                }
             `}</style>
 
             <Card className={`w-full ${className}`}>
@@ -408,6 +594,25 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                         </Button>
                         <Button type="button" variant={formats.underline ? 'default' : 'outline'} size="sm" onClick={() => toggleFormat('underline')} title="Podkreślenie">
                             <Underline className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={inColumnsBlock ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                if (inColumnsBlock) {
+                                    removeColumnsAtSelection();
+                                } else {
+                                    const selection = window.getSelection();
+                                    if (selection && selection.rangeCount > 0) {
+                                        savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+                                    }
+                                    setShowColumnsDialog(true);
+                                }
+                            }}
+                            title={inColumnsBlock ? 'Usuń blok kolumnowy' : 'Wstaw kolumny tekstu'}
+                        >
+                            <Columns className="h-4 w-4" />
                         </Button>
                     </div>
 
@@ -464,28 +669,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                             onClick={() => {
                                 const selection = window.getSelection();
                                 if (selection && selection.rangeCount > 0) {
-                                    savedRangeRef.current = selection.getRangeAt(0);
+                                    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
                                 }
                                 setShowImageDialog(true);
                             }}
                             title="Wstaw obraz"
                         >
                             <ImageIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                const selection = window.getSelection();
-                                if (selection && selection.rangeCount > 0) {
-                                    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
-                                }
-                                setShowFileDialog(true);
-                            }}
-                            title="Wstaw plik"
-                        >
-                            <Paperclip className="h-4 w-4" />
                         </Button>
                         <Button
                             type="button"
@@ -528,7 +718,6 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                         </select>
                     </div>
                 </div>
-
                 <div className="relative">
                     <div
                         ref={editorRef}
@@ -642,9 +831,11 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                                 <Label htmlFor="image-file" className="text-right">
                                     Plik obrazu
                                 </Label>
-                                <Input id="image-file" type="file" accept="image/*" onChange={(e) => setSelectedImageFile(e.target.files ? e.target.files[0] : null)} className="col-span-3" />
+                                <Input id="image-file" type="file" accept="image/*" onChange={handleImageFileChange} className="col-span-3" />
                             </div>
                         )}
+                        {imageSourceType === 'upload' && <div className="col-span-4 text-xs text-gray-500 mb-2">Maksymalny rozmiar pliku: 5MB</div>}
+                        {imageUploadError && <div className="col-span-4 text-red-500 text-sm mb-2">{imageUploadError}</div>}
 
                         <div className="col-span-4 items-center gap-4">
                             <Label htmlFor="image-alt" className="text-right">
@@ -736,6 +927,29 @@ export function RichTextEditor({ value, onChange, placeholder = 'Wprowadź tekst
                         <Button onClick={handleFileUpload} disabled={!selectedFile}>
                             Wstaw
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Columns Dialog */}
+            <Dialog open={showColumnsDialog} onOpenChange={setShowColumnsDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Wstaw kolumny tekstu</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="columns-count" className="text-right">
+                                Liczba kolumn
+                            </Label>
+                            <Input id="columns-count" type="number" min="2" max="3" value={columnsCount} onChange={(e) => setColumnsCount(Number(e.target.value))} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowColumnsDialog(false)}>
+                            Anuluj
+                        </Button>
+                        <Button onClick={() => insertColumns(columnsCount)}>Wstaw</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

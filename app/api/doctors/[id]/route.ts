@@ -28,8 +28,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const now = new Date().toISOString();
         const updateData = {
             ...body,
+            ...(body.description !== undefined ? { bio: body.description } : {}),
             updated_at: now,
         };
+        if (updateData.description !== undefined) delete updateData.description;
 
         const { data, error } = await supabase.from('doctors').update(updateData).eq('id', id).select().single();
 

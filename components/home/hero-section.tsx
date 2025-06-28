@@ -87,14 +87,7 @@ export function HeroSection() {
                                 <div className="inline-flex items-center px-3 py-1 bg-blue-600/20 backdrop-blur-sm rounded-full border border-blue-400/30">
                                     <span className="text-blue-200 text-sm font-medium">SŁUŻYMY SPOŁECZNOŚCI OD 1998 ROKU</span>
                                 </div>
-                                <h1 className="text-3xl md:text-4xl font-bold leading-tight">
-                                    Profesjonalna{' '}
-                                    <span className="text-blue-300 relative">
-                                        opieka zdrowotna
-                                        <div className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
-                                    </span>{' '}
-                                    w sercu Łopuszna
-                                </h1>
+                                <h1 className="text-3xl md:text-4xl font-bold leading-tight">Profesjonalna opieka zdrowotna w sercu Łopuszna</h1>
                                 <p className="text-lg text-blue-100 leading-relaxed max-w-2xl">
                                     Zapewniamy kompleksową opiekę medyczną dla całej rodziny. Nowoczesny sprzęt, doświadczeni lekarze i indywidualne podejście do każdego pacjenta.
                                 </p>

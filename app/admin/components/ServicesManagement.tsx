@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Service } from '@/lib/types/services';
 
 interface ServicesManagementProps {
     services: Service[];
     onSave: (service: Partial<Service>) => void;
     onDelete: (table: string, id: string) => Promise<void>;
+    isSaving?: boolean;
 }
 
-export function ServicesManagement({ services, onSave, onDelete }: ServicesManagementProps) {
+export function ServicesManagement({ services, onSave, onDelete, isSaving = false }: ServicesManagementProps) {
     const [editingService, setEditingService] = useState<Service | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -43,7 +44,10 @@ export function ServicesManagement({ services, onSave, onDelete }: ServicesManag
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzaj Usługami</CardTitle>
-                        <Button onClick={handleNewService}>Dodaj Nową Usługę</Button>
+                        <Button onClick={handleNewService}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj nową usługę
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -72,8 +76,10 @@ export function ServicesManagement({ services, onSave, onDelete }: ServicesManag
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit">Zapisz</Button>
-                                <Button variant="outline" onClick={() => setEditingService(null)}>
+                                <Button type="submit" disabled={isSaving}>
+                                    {isSaving ? 'Zapisywanie...' : 'Zapisz'}
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingService(null)} disabled={isSaving}>
                                     Anuluj
                                 </Button>
                             </div>

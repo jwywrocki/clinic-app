@@ -18,7 +18,7 @@ export async function GET(request: Request) {
             return NextResponse.json(data);
         }
 
-        const { data, error } = await supabase.from('doctors').select('*').order('name', { ascending: true });
+        const { data, error } = await supabase.from('doctors').select('*').order('last_name', { ascending: true });
 
         if (error) throw error;
 
@@ -32,18 +32,22 @@ export async function GET(request: Request) {
 // POST /api/doctors
 export async function POST(request: Request) {
     try {
-        const { name, specialization, description = '', is_active = true } = await request.json();
+        const { first_name, last_name, specialization, bio = '', image_url = '', schedule = '', is_active = true, order_position = 0 } = await request.json();
 
-        if (!name || !specialization) {
-            return NextResponse.json({ error: 'Brakuje name lub specialization' }, { status: 400 });
+        if (!first_name || !last_name || !specialization) {
+            return NextResponse.json({ error: 'Brakuje first_name, last_name lub specialization' }, { status: 400 });
         }
 
         const now = new Date().toISOString();
         const insert = {
-            name,
+            first_name,
+            last_name,
             specialization,
-            description,
+            bio,
+            image_url,
+            schedule,
             is_active,
+            order_position,
             created_at: now,
             updated_at: now,
         };
@@ -64,17 +68,21 @@ export async function PATCH(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
-        const { name, specialization, description, is_active } = await request.json();
+        const { first_name, last_name, specialization, bio, image_url, schedule, is_active, order_position } = await request.json();
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
         }
 
         const update: any = { updated_at: new Date().toISOString() };
-        if (name !== undefined) update.name = name;
+        if (first_name !== undefined) update.first_name = first_name;
+        if (last_name !== undefined) update.last_name = last_name;
         if (specialization !== undefined) update.specialization = specialization;
-        if (description !== undefined) update.description = description;
+        if (bio !== undefined) update.bio = bio;
+        if (image_url !== undefined) update.image_url = image_url;
+        if (schedule !== undefined) update.schedule = schedule;
         if (is_active !== undefined) update.is_active = is_active;
+        if (order_position !== undefined) update.order_position = order_position;
 
         const { data, error } = await supabase.from('doctors').update(update).eq('id', id).select().single();
 

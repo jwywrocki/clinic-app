@@ -81,6 +81,8 @@ create table if not exists doctors (
     bio text,
     schedule text not null,
     is_active boolean default true,
+    image_url text,
+    order_position integer not null default 1,
     page_id uuid references pages (id) on delete cascade,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()

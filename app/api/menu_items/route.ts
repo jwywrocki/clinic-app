@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 // POST /api/menu_items
 export async function POST(request: Request) {
     try {
-        const { title, url: link, order_position = 0, parent_id = null, is_published = false, created_by = null } = await request.json();
+        const { title, url: link, order_position = 0, parent_id, is_published = false, created_by = null } = await request.json();
 
         if (!title || !link) {
             return NextResponse.json({ error: 'Brakuje title lub url' }, { status: 400 });
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
             title,
             url: link,
             order_position,
-            parent_id,
+            parent_id: parent_id || null,
             is_published,
             created_by,
             created_at: now,
@@ -72,7 +72,7 @@ export async function PATCH(request: Request) {
         if (body.title !== undefined) update.title = body.title;
         if (body.url !== undefined) update.url = body.url;
         if (body.order_position !== undefined) update.order_position = body.order_position;
-        if (body.parent_id !== undefined) update.parent_id = body.parent_id;
+        if (body.parent_id !== undefined) update.parent_id = body.parent_id || null;
         if (body.is_published !== undefined) update.is_published = body.is_published;
         if (body.created_by !== undefined) update.created_by = body.created_by;
 

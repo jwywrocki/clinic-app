@@ -55,6 +55,7 @@ export async function saveEntity<T>(
         toast({
             title: isEditing ? 'Zaktualizowano' : 'Utworzono',
             description: isEditing ? entityInfo.edit : entityInfo.create,
+            variant: 'success',
         });
     } catch (err: any) {
         console.error(`saveEntity(${table}) error:`, err);

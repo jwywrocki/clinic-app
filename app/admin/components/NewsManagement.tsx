@@ -8,16 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { NewsItem } from '@/lib/types/news';
 
 interface NewsManagementProps {
     news: NewsItem[];
     onSave: (news: Partial<NewsItem>) => void;
     onDelete: (table: string, id: string) => Promise<void>;
+    isSaving?: boolean;
 }
 
-export function NewsManagement({ news, onSave, onDelete }: NewsManagementProps) {
+export function NewsManagement({ news, onSave, onDelete, isSaving = false }: NewsManagementProps) {
     const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -45,7 +46,10 @@ export function NewsManagement({ news, onSave, onDelete }: NewsManagementProps) 
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzaj Aktualnościami</CardTitle>
-                        <Button onClick={handleNewNews}>Dodaj Nową Aktualność</Button>
+                        <Button onClick={handleNewNews}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj nową aktualność
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -64,8 +68,10 @@ export function NewsManagement({ news, onSave, onDelete }: NewsManagementProps) 
                                 <Label htmlFor="newsPublished">Opublikowana</Label>
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit">Zapisz</Button>
-                                <Button variant="outline" onClick={() => setEditingNews(null)}>
+                                <Button type="submit" disabled={isSaving}>
+                                    {isSaving ? 'Zapisywanie...' : 'Zapisz'}
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingNews(null)} disabled={isSaving}>
                                     Anuluj
                                 </Button>
                             </div>

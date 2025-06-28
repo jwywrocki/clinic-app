@@ -21,11 +21,6 @@ export const metadata: Metadata = {
         locale: 'pl_PL',
         siteName: 'SPZOZ GOZ Łopuszno',
     },
-    twitter: {
-        card: 'summary_large_image',
-        title: 'SPZOZ Gminny Ośrodek Zdrowia w Łopusznie',
-        description: 'Profesjonalna opieka zdrowotna w sercu Łopuszna',
-    },
     alternates: {
         canonical: 'http://www.gozlopuszno.pl/',
     },

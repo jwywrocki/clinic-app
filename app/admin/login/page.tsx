@@ -49,6 +49,7 @@ export default function LoginPage() {
                 toast({
                     title: 'Zalogowano pomyślnie!',
                     description: `Witaj ${loginForm.username}`,
+                    variant: 'success',
                 });
                 router.replace('/admin');
             } else {

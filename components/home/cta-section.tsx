@@ -57,14 +57,7 @@ export function CtaSection() {
                                 <div className="inline-flex items-center px-4 py-2 bg-blue-500/20 backdrop-blur-sm rounded-full border border-blue-400/30">
                                     <span className="text-blue-200 text-sm font-medium">UMÓW SIĘ JUŻ DZIŚ</span>
                                 </div>
-                                <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                                    Zadbaj o swoje{' '}
-                                    <span className="text-blue-200 relative">
-                                        zdrowie
-                                        <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-300 to-blue-100 rounded-full"></div>
-                                    </span>{' '}
-                                    już dziś
-                                </h2>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">Zadbaj o swoje zdrowie już dziś</h2>
                                 <p className="text-xl text-blue-100 leading-relaxed">
                                     Nie czekaj z wizytą u lekarza. Umów się na konsultację i zadbaj o swoje zdrowie oraz zdrowie swoich bliskich. Nasz zespół specjalistów jest gotowy Ci pomóc.
                                 </p>

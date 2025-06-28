@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { MenuItem } from '@/lib/types/menu';
 
 interface MenuManagementProps {
@@ -15,9 +15,10 @@ interface MenuManagementProps {
     onSave: (menuItem: Partial<MenuItem>) => void;
     onDelete: (id: string) => Promise<void>;
     onUpdateOrder?: (updatedItems: MenuItem[]) => void;
+    isSaving?: boolean;
 }
 
-export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder }: MenuManagementProps) {
+export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isSaving = false }: MenuManagementProps) {
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
@@ -79,6 +80,7 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder }: M
 
         const dataToSave = {
             ...formData,
+            parent_id: formData.parent_id || undefined,
             id: editingItem?.id,
         };
 
@@ -124,7 +126,10 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder }: M
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Zarządzanie Menu</CardTitle>
-                        <Button onClick={() => setIsFormVisible(true)}>Dodaj element menu</Button>
+                        <Button onClick={() => setIsFormVisible(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj element menu
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -192,8 +197,10 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder }: M
                                     </div>
 
                                     <div className="flex gap-2">
-                                        <Button type="submit">{editingItem ? 'Zaktualizuj' : 'Dodaj'}</Button>
-                                        <Button type="button" variant="outline" onClick={resetForm}>
+                                        <Button type="submit" disabled={isSaving}>
+                                            {isSaving ? 'Zapisywanie...' : editingItem ? 'Zaktualizuj' : 'Dodaj'}
+                                        </Button>
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                             Anuluj
                                         </Button>
                                     </div>

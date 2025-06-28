@@ -43,7 +43,7 @@ export default function DoctorsPage() {
                 if (pageError) console.error('Error fetching doctors page content:', pageError);
                 else setPageContent(pageData);
 
-                const { data: doctorsData, error: doctorsError } = await supabase.from('doctors').select('*').eq('is_active', true).order('last_name', { ascending: true });
+                const { data: doctorsData, error: doctorsError } = await supabase.from('doctors').select('*').eq('is_active', true).order('order_position', { ascending: true });
 
                 if (doctorsError) {
                     console.error('Error fetching doctors list:', doctorsError);

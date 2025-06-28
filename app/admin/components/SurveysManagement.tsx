@@ -14,9 +14,10 @@ import { Survey, Question, QuestionOption, SurveyData, QuestionData, QuestionOpt
 interface SurveysManagementProps {
     onSave: (data: any) => Promise<void>;
     currentUser?: { id: string } | null;
+    isSaving?: boolean;
 }
 
-export function SurveysManagement({ onSave, currentUser }: SurveysManagementProps) {
+export function SurveysManagement({ onSave, currentUser, isSaving = false }: SurveysManagementProps) {
     const [surveys, setSurveys] = useState<Survey[]>([]);
     const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -75,7 +76,7 @@ export function SurveysManagement({ onSave, currentUser }: SurveysManagementProp
 
     const handleCreateSurvey = async () => {
         const surveyData: SurveyData = {
-            title: 'Nowa ankieta',
+            title: 'Dodaj ankietę',
             is_published: false,
             created_by: currentUser?.id || null,
         };
@@ -138,34 +139,35 @@ export function SurveysManagement({ onSave, currentUser }: SurveysManagementProp
 
     const handleSaveFullSurvey = async (survey: Survey) => {
         try {
-            const response = await fetch(`/api/surveys?id=${survey.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: survey.title,
-                    is_published: survey.is_published,
-                }),
+            // Use the onSave function from AdminPanel which handles loading state
+            await onSave({
+                id: survey.id,
+                title: survey.title,
+                is_published: survey.is_published,
             });
 
-            if (response.ok) {
-                const updatedSurvey = await response.json();
-                setSurveys((prev) => prev.map((s) => (s.id === survey.id ? updatedSurvey : s)));
-                setSelectedSurvey((prev) => ({ ...prev!, ...updatedSurvey }));
+            // Save question options after main survey is saved
+            if (survey.questions) {
+                const optionPromises = survey.questions.flatMap(
+                    (question) =>
+                        question.options?.map((option) =>
+                            fetch(`/api/surveys/${survey.id}/questions/dummy/options/${option.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text: option.text }),
+                            })
+                        ) || []
+                );
 
-                toast({
-                    title: 'Sukces',
-                    description: 'Ankieta została zapisana.',
-                    variant: 'success',
-                });
-
-                await fetchSurveyDetails(survey.id);
+                await Promise.all(optionPromises);
             }
+
+            setSurveys((prev) => prev.map((s) => (s.id === survey.id ? { ...s, ...survey } : s)));
+
+            // Refresh survey details to get latest data
+            await fetchSurveyDetails(survey.id);
         } catch (error) {
-            toast({
-                title: 'Błąd',
-                description: 'Nie udało się zapisać ankiety.',
-                variant: 'destructive',
-            });
+            console.error('Error saving survey:', error);
         }
     };
 
@@ -331,31 +333,23 @@ export function SurveysManagement({ onSave, currentUser }: SurveysManagementProp
         }
     };
 
-    const handleUpdateQuestionOption = async (optionId: string, newText: string) => {
+    const handleUpdateQuestionOption = (optionId: string, newText: string) => {
         if (!selectedSurvey) return;
 
-        try {
-            const response = await fetch(`/api/surveys/${selectedSurvey.id}/questions/dummy/options/${optionId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: newText }),
-            });
+        // Update only local state, save will happen when user clicks "Save Survey"
+        setSelectedSurvey((prev) => {
+            if (!prev) return prev;
 
-            if (response.ok) {
-                await fetchSurveyDetails(selectedSurvey.id);
-                toast({
-                    title: 'Sukces',
-                    description: 'Opcja została zaktualizowana.',
-                    variant: 'success',
-                });
-            }
-        } catch (error) {
-            toast({
-                title: 'Błąd',
-                description: 'Nie udało się zaktualizować opcji.',
-                variant: 'destructive',
-            });
-        }
+            const updatedQuestions = prev.questions?.map((question) => ({
+                ...question,
+                options: question.options?.map((option) => (option.id === optionId ? { ...option, text: newText } : option)),
+            }));
+
+            return {
+                ...prev,
+                questions: updatedQuestions,
+            };
+        });
     };
 
     const handleDeleteQuestionOption = async (optionId: string) => {
@@ -511,7 +505,7 @@ export function SurveysManagement({ onSave, currentUser }: SurveysManagementProp
                         <CardTitle className="text-2xl font-bold text-gray-900">Zarządzanie ankietami</CardTitle>
                         <Button onClick={handleCreateSurvey} className="bg-blue-600 hover:bg-blue-700">
                             <Plus className="h-4 w-4 mr-2" />
-                            Nowa ankieta
+                            Dodaj ankietę
                         </Button>
                     </div>
                 </CardHeader>
@@ -634,12 +628,12 @@ export function SurveysManagement({ onSave, currentUser }: SurveysManagementProp
                                     </div>
 
                                     <div className="flex justify-end gap-2 pb-4 border-b">
-                                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
                                             Anuluj
                                         </Button>
-                                        <Button onClick={() => handleSaveFullSurvey(selectedSurvey)} className="bg-blue-600 hover:bg-blue-700">
+                                        <Button onClick={() => handleSaveFullSurvey(selectedSurvey)} className="bg-blue-600 hover:bg-blue-700" disabled={isSaving}>
                                             <Save className="h-4 w-4 mr-2" />
-                                            Zapisz ankietę
+                                            {isSaving ? 'Zapisywanie...' : 'Zapisz ankietę'}
                                         </Button>
                                     </div>
 
