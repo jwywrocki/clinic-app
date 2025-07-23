@@ -3,7 +3,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Users, Heart, Shield, Activity, Stethoscope, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
@@ -15,32 +14,36 @@ interface Service {
     icon: string;
 }
 
-const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
-    users: Users,
-    heart: Heart,
-    activity: Activity,
-    shield: Shield,
-    stethoscope: Stethoscope,
+const iconEmojiMap: { [key: string]: string } = {
+    heart: '❤️',
+    stethoscope: '🩺',
+    pill: '💊',
+    syringe: '💉',
+    bandage: '🩹',
+    tooth: '🦷',
+    eye: '👁️',
+    brain: '🧠',
+    lungs: '🫁',
+    bone: '🦴',
+    microscope: '🔬',
+    'x-ray': '🩻',
+    thermometer: '🌡️',
+    baby: '👶',
+    'pregnant-woman': '🤰',
+    elderly: '👴',
+    wheelchair: '♿',
+    ambulance: '🚑',
+    hospital: '🏥',
+    'first-aid': '🆘',
 };
 
-const getIconComponent = (iconName: string | undefined): React.ComponentType<{ className?: string }> => {
+const getIconEmoji = (iconName: string | undefined): string => {
     if (!iconName) {
-        return CheckCircle;
+        return '🏥'; // Default hospital icon
     }
 
-    if (iconMap[iconName]) {
-        return iconMap[iconName];
-    }
-
-    const lowerIconName = iconName.toLowerCase();
-    if (iconMap[lowerIconName]) {
-        return iconMap[lowerIconName];
-    }
-
-    return CheckCircle;
+    return iconEmojiMap[iconName] || '🏥';
 };
-
-const colorOptions = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
 
 export function ServicesSection() {
     const [services, setServices] = useState<Service[]>([]);
@@ -56,7 +59,7 @@ export function ServicesSection() {
                     return;
                 }
 
-                const { data: servicesData, error } = await supabase.from('services').select('id, title, description, icon').limit(6); // Limit to 6 services for home page
+                const { data: servicesData, error } = await supabase.from('services').select('id, title, description, icon').eq('is_published', true).order('created_at', { ascending: true }).limit(6); // Limit to 6 services for home page
 
                 if (error) {
                     console.error('Error fetching services:', error);
@@ -102,20 +105,19 @@ export function ServicesSection() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                     {services.map((service, index) => {
-                        const IconComponent = getIconComponent(service.icon);
-                        const color = colorOptions[index % colorOptions.length];
+                        const iconEmoji = getIconEmoji(service.icon);
 
                         return (
                             <AnimatedSection key={service.id} animation="fadeInUp" delay={index * 100}>
-                                <Card className="group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                                    <CardContent className="p-8">
+                                <Card className="group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg bg-white/80 backdrop-blur-sm h-full">
+                                    <CardContent className="p-8 h-full flex flex-col">
                                         <div className="flex items-center space-x-4 mb-6">
-                                            <div className={`${color} p-4 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                                                <IconComponent className="h-8 w-8 text-white" />
+                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
+                                                <span className="text-3xl">{iconEmoji}</span>
                                             </div>
-                                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{service.title}</h3>
+                                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors flex-1">{service.title}</h3>
                                         </div>
-                                        <div className="text-gray-600 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: service.description }} />
+                                        <div className="text-gray-600 leading-relaxed prose prose-sm max-w-none flex-1" dangerouslySetInnerHTML={{ __html: service.description }} />
                                     </CardContent>
                                 </Card>
                             </AnimatedSection>

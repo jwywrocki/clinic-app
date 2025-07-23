@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
         order_position: 1,
         parent_id: '',
         is_published: true,
+        no_link: false,
     });
 
     const organizeMenuHierarchy = (items: MenuItem[]): MenuItem[] => {
@@ -50,6 +51,12 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
         return organizeMenuHierarchy(sortedItems);
     }, [menuItems]);
 
+    useEffect(() => {
+        if (!editingItem) {
+            setFormData((prev) => ({ ...prev, order_position: 1 }));
+        }
+    }, [formData.parent_id, editingItem]);
+
     const resetForm = () => {
         setFormData({
             title: '',
@@ -57,6 +64,7 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
             order_position: 1,
             parent_id: '',
             is_published: true,
+            no_link: false,
         });
         setEditingItem(null);
         setIsFormVisible(false);
@@ -69,23 +77,154 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
             order_position: item.order_position || 1,
             parent_id: item.parent_id || '',
             is_published: item.is_published ?? true,
+            no_link: !item.url,
         });
         setEditingItem(item);
         setIsFormVisible(true);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.title.trim()) return;
 
         const dataToSave = {
             ...formData,
+            url: formData.no_link ? null : formData.url || null,
             parent_id: formData.parent_id || undefined,
             id: editingItem?.id,
         };
 
-        onSave(dataToSave);
+        if (editingItem && formData.order_position !== editingItem.order_position) {
+            const updatedItems = reorderMenuItems(dataToSave);
+            onUpdateOrder?.(updatedItems);
+        } else if (!editingItem && formData.order_position > 1) {
+            const updatedItems = reorderMenuItemsForNewItem(dataToSave);
+            if (onUpdateOrder) {
+                await new Promise<void>((resolve) => {
+                    onUpdateOrder(updatedItems);
+                    setTimeout(() => {
+                        onSave(dataToSave);
+                        resolve();
+                    }, 100);
+                });
+            } else {
+                onSave(dataToSave);
+            }
+        } else {
+            onSave(dataToSave);
+        }
+
         resetForm();
+    };
+
+    const reorderMenuItems = (updatedItem: Partial<MenuItem>): MenuItem[] => {
+        if (!editingItem || !updatedItem.id) return menuItems;
+
+        const newPosition = updatedItem.order_position || 1;
+        const oldPosition = editingItem.order_position || 1;
+        const parentId = updatedItem.parent_id || null;
+        const oldParentId = editingItem.parent_id || null;
+
+        const updatedItems = [...menuItems];
+
+        const editingIndex = updatedItems.findIndex((item) => item.id === editingItem.id);
+        if (editingIndex === -1) return menuItems;
+
+        updatedItems[editingIndex] = {
+            ...editingItem,
+            ...updatedItem,
+            parent_id: parentId,
+            order_position: newPosition,
+            created_at: editingItem.created_at,
+            updated_at: new Date().toISOString(),
+        } as MenuItem;
+
+        if (oldParentId !== parentId) {
+            const oldGroupItems = menuItems.filter((item) => (item.parent_id || null) === oldParentId && item.id !== editingItem.id);
+            oldGroupItems.sort((a, b) => (a.order_position || 0) - (b.order_position || 0));
+
+            oldGroupItems.forEach((item, index) => {
+                const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+                if (itemIndex !== -1) {
+                    updatedItems[itemIndex] = {
+                        ...item,
+                        order_position: index + 1,
+                        updated_at: new Date().toISOString(),
+                    };
+                }
+            });
+        }
+
+        const currentGroupItems = menuItems.filter((item) => (item.parent_id || null) === parentId && item.id !== editingItem.id);
+        currentGroupItems.sort((a, b) => (a.order_position || 0) - (b.order_position || 0));
+
+        if (oldParentId === parentId) {
+            currentGroupItems.forEach((item) => {
+                const currentPos = item.order_position || 0;
+                let newPos = currentPos;
+
+                if (oldPosition < newPosition) {
+                    if (currentPos > oldPosition && currentPos <= newPosition) {
+                        newPos = currentPos - 1;
+                    }
+                } else if (oldPosition > newPosition) {
+                    if (currentPos >= newPosition && currentPos < oldPosition) {
+                        newPos = currentPos + 1;
+                    }
+                }
+
+                const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+                if (itemIndex !== -1 && newPos !== currentPos) {
+                    updatedItems[itemIndex] = {
+                        ...item,
+                        order_position: newPos,
+                        updated_at: new Date().toISOString(),
+                    };
+                }
+            });
+        } else {
+            currentGroupItems.forEach((item) => {
+                const currentPos = item.order_position || 0;
+                if (currentPos >= newPosition) {
+                    const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+                    if (itemIndex !== -1) {
+                        updatedItems[itemIndex] = {
+                            ...item,
+                            order_position: currentPos + 1,
+                            updated_at: new Date().toISOString(),
+                        };
+                    }
+                }
+            });
+        }
+
+        return updatedItems;
+    };
+
+    const reorderMenuItemsForNewItem = (newItem: Partial<MenuItem>): MenuItem[] => {
+        const targetPosition = newItem.order_position || 1;
+        const parentId = newItem.parent_id || null;
+
+        const sameLevelItems = menuItems.filter((item) => (item.parent_id || null) === parentId);
+
+        sameLevelItems.sort((a, b) => (a.order_position || 0) - (b.order_position || 0));
+
+        const updatedItems = [...menuItems];
+
+        sameLevelItems.forEach((item) => {
+            if ((item.order_position || 0) >= targetPosition) {
+                const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+                if (itemIndex !== -1) {
+                    updatedItems[itemIndex] = {
+                        ...item,
+                        order_position: (item.order_position || 0) + 1,
+                        updated_at: new Date().toISOString(),
+                    };
+                }
+            }
+        });
+
+        return updatedItems;
     };
 
     const handleDelete = async (id: string) => {
@@ -97,14 +236,31 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
     const generatePositionOptions = () => {
         const options = [{ value: '1', label: '1 - Na początku' }];
 
-        organizedMenuItems.forEach((item, index) => {
-            if (!item.parent_id) {
-                options.push({
-                    value: String(index + 2),
-                    label: `${index + 2} - Po "${item.title}"`,
+        if (formData.parent_id) {
+            const parentItem = menuItems.find((item) => item.id === formData.parent_id);
+            const siblingsInParent = menuItems.filter((item) => item.parent_id === formData.parent_id);
+
+            if (parentItem) {
+                siblingsInParent.forEach((item, index) => {
+                    if (!editingItem || item.id !== editingItem.id) {
+                        options.push({
+                            value: String(index + 2),
+                            label: `${index + 2} - Po "${item.title}"`,
+                        });
+                    }
                 });
             }
-        });
+        } else {
+            const mainItems = organizedMenuItems.filter((item) => !item.parent_id);
+            mainItems.forEach((item, index) => {
+                if (!editingItem || item.id !== editingItem.id) {
+                    options.push({
+                        value: String(index + 2),
+                        label: `${index + 2} - Po "${item.title}"`,
+                    });
+                }
+            });
+        }
 
         return options;
     };
@@ -147,8 +303,25 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
                                             <Input id="title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Wprowadź tytuł" required />
                                         </div>
                                         <div className="space-y-2">
+                                            <div className="flex items-center space-x-2 mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="no_link"
+                                                    checked={formData.no_link}
+                                                    onChange={(e) => setFormData({ ...formData, no_link: e.target.checked, url: e.target.checked ? '' : formData.url })}
+                                                    className="h-4 w-4 rounded"
+                                                />
+                                                <Label htmlFor="no_link">Brak linku (np. kategoria rozwijalna)</Label>
+                                            </div>
                                             <Label htmlFor="url">URL</Label>
-                                            <Input id="url" value={formData.url} onChange={(e) => setFormData({ ...formData, url: e.target.value })} placeholder="np. /strona lub https://..." />
+                                            <Input
+                                                id="url"
+                                                value={formData.url}
+                                                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                                                placeholder="np. /strona lub https://..."
+                                                disabled={formData.no_link}
+                                                className={formData.no_link ? 'bg-gray-100' : ''}
+                                            />
                                         </div>
                                     </div>
 
@@ -174,7 +347,7 @@ export function MenuManagement({ menuItems, onSave, onDelete, onUpdateOrder, isS
                                                 id="parent_id"
                                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                 value={formData.parent_id}
-                                                onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                                                onChange={(e) => setFormData({ ...formData, parent_id: e.target.value, order_position: 1 })}
                                             >
                                                 {generateParentOptions().map((option) => (
                                                     <option key={option.value} value={option.value}>

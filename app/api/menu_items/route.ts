@@ -32,14 +32,14 @@ export async function POST(request: Request) {
     try {
         const { title, url: link, order_position = 0, parent_id, is_published = false, created_by = null } = await request.json();
 
-        if (!title || !link) {
-            return NextResponse.json({ error: 'Brakuje title lub url' }, { status: 400 });
+        if (!title) {
+            return NextResponse.json({ error: 'Brakuje title' }, { status: 400 });
         }
 
         const now = new Date().toISOString();
         const insert = {
             title,
-            url: link,
+            url: link || null,
             order_position,
             parent_id: parent_id || null,
             is_published,
@@ -70,7 +70,7 @@ export async function PATCH(request: Request) {
 
         const update: any = { updated_at: new Date().toISOString() };
         if (body.title !== undefined) update.title = body.title;
-        if (body.url !== undefined) update.url = body.url;
+        if (body.url !== undefined) update.url = body.url || null;
         if (body.order_position !== undefined) update.order_position = body.order_position;
         if (body.parent_id !== undefined) update.parent_id = body.parent_id || null;
         if (body.is_published !== undefined) update.is_published = body.is_published;

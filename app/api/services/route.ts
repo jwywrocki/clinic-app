@@ -34,14 +34,14 @@ export async function GET(request: Request) {
 // POST /api/services
 export async function POST(request: Request) {
     try {
-        const { title, description = '', is_published = false } = await request.json();
+        const { title, description = '', icon = '', is_published = false } = await request.json();
 
-        if (!title || !description) {
-            return NextResponse.json({ error: 'Brakuje title lub description' }, { status: 400 });
+        if (!title) {
+            return NextResponse.json({ error: 'Brakuje title' }, { status: 400 });
         }
 
         const now = new Date().toISOString();
-        const insert = { title, description, is_published, created_at: now, updated_at: now };
+        const insert = { title, description, icon, is_published, created_at: now, updated_at: now };
 
         const { data, error } = await supabase.from('services').insert([insert]).select().single();
 
@@ -68,6 +68,7 @@ export async function PATCH(request: Request) {
         const update: any = { updated_at: new Date().toISOString() };
         if (body.title !== undefined) update.title = body.title;
         if (body.description !== undefined) update.description = body.description;
+        if (body.icon !== undefined) update.icon = body.icon;
         if (body.is_published !== undefined) update.is_published = body.is_published;
 
         const { data, error } = await supabase.from('services').update(update).eq('id', id).select().single();

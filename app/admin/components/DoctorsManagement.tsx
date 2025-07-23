@@ -21,6 +21,7 @@ interface DoctorsManagementProps {
 
 export function DoctorsManagement({ doctors, onSave, onDelete, isSaving = false }: DoctorsManagementProps) {
     const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>('wszystkie');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,7 +41,8 @@ export function DoctorsManagement({ doctors, onSave, onDelete, isSaving = false 
             image_url: '',
             schedule: '',
             is_active: true,
-            order_position: 0,
+            order_position: 1,
+            menu_category: 'lekarze',
             created_at: '',
             updated_at: '',
         });
@@ -69,6 +71,10 @@ export function DoctorsManagement({ doctors, onSave, onDelete, isSaving = false 
         setEditingDoctor(null);
     };
 
+    const filteredDoctors = selectedCategory === 'wszystkie' ? doctors : doctors.filter((doctor) => doctor.menu_category === selectedCategory);
+
+    const availableCategories = [...new Set(doctors.map((d) => d.menu_category || 'lekarze'))];
+
     return (
         <AnimatedSection animation="fadeInUp">
             <Card className="border-0 shadow-lg">
@@ -86,31 +92,58 @@ export function DoctorsManagement({ doctors, onSave, onDelete, isSaving = false 
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
+                                if (!editingDoctor.first_name?.trim() || !editingDoctor.last_name?.trim() || !editingDoctor.specialization?.trim()) {
+                                    alert('Imię, nazwisko i specjalizacja są wymagane!');
+                                    return;
+                                }
                                 handleSaveWithReorder(editingDoctor);
                             }}
                             className="space-y-4"
                         >
                             <div>
-                                <Label htmlFor="doctorName">Imię</Label>
-                                <Input id="doctorName" value={editingDoctor.first_name || ''} onChange={(e) => setEditingDoctor({ ...editingDoctor, first_name: e.target.value })} placeholder="Jan" />
+                                <Label htmlFor="doctorName">Imię *</Label>
+                                <Input
+                                    id="doctorName"
+                                    value={editingDoctor.first_name || ''}
+                                    onChange={(e) => setEditingDoctor({ ...editingDoctor, first_name: e.target.value })}
+                                    placeholder="Jan"
+                                    required
+                                />
                             </div>
                             <div>
-                                <Label htmlFor="doctorSurname">Nazwisko</Label>
+                                <Label htmlFor="doctorSurname">Nazwisko *</Label>
                                 <Input
                                     id="doctorSurname"
                                     value={editingDoctor.last_name || ''}
                                     onChange={(e) => setEditingDoctor({ ...editingDoctor, last_name: e.target.value })}
                                     placeholder="Kowalski"
+                                    required
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="doctorSpecialty">Specjalizacja</Label>
+                                <Label htmlFor="doctorSpecialty">Specjalizacja *</Label>
                                 <Input
                                     id="doctorSpecialty"
                                     value={editingDoctor.specialization || ''}
                                     onChange={(e) => setEditingDoctor({ ...editingDoctor, specialization: e.target.value })}
                                     placeholder="Lekarz rodzinny"
+                                    required
                                 />
+                            </div>
+                            <div>
+                                <Label htmlFor="doctorMenuCategory">Kategoria menu *</Label>
+                                <Select value={editingDoctor.menu_category || 'lekarze'} onValueChange={(value) => setEditingDoctor({ ...editingDoctor, menu_category: value })}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Wybierz kategorię" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="lekarze">Lekarze</SelectItem>
+                                        <SelectItem value="pielegniarki">Pielęgniarki</SelectItem>
+                                        <SelectItem value="specjalisci">Specjaliści</SelectItem>
+                                        <SelectItem value="administracja">Administracja</SelectItem>
+                                        <SelectItem value="inne">Inne</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div>
                                 <Label htmlFor="doctorDescription">Opis</Label>
@@ -190,67 +223,97 @@ export function DoctorsManagement({ doctors, onSave, onDelete, isSaving = false 
                             </div>
                         </form>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imię i Nazwisko</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specjalizacja</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Godziny przyjęć</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akcje</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {doctors
-                                        .slice()
-                                        .sort((a, b) => (a.order_position || 0) - (b.order_position || 0))
-                                        .map((doctor) => (
-                                            <tr key={doctor.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    Dr. {doctor.first_name} {doctor.last_name}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doctor.specialization}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
-                                                    <div className="truncate max-h-16 overflow-hidden" title={doctor.schedule ? doctor.schedule.replace(/<[^>]*>/g, '') : 'Brak informacji'}>
-                                                        {doctor.schedule ? <div dangerouslySetInnerHTML={{ __html: doctor.schedule }} className="prose prose-sm max-w-none" /> : 'Brak informacji'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <Badge
-                                                        variant={doctor.is_active ? 'default' : 'secondary'}
-                                                        className={doctor.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
-                                                    >
-                                                        {doctor.is_active ? 'Aktywny' : 'Nieaktywny'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                    <Button variant="outline" size="sm" onClick={() => setEditingDoctor(doctor)} title="Edytuj lekarza">
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => onDelete('doctors', doctor.id)}
-                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                        title="Usuń lekarza"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </td>
-                                            </tr>
+                        <>
+                            {/* Filtr kategorii */}
+                            <div className="mb-4 flex items-center gap-4">
+                                <Label htmlFor="categoryFilter">Filtruj według kategorii:</Label>
+                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                    <SelectTrigger className="w-48">
+                                        <SelectValue placeholder="Wybierz kategorię" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="wszystkie">Wszystkie kategorie</SelectItem>
+                                        {availableCategories.map((category) => (
+                                            <SelectItem key={category} value={category} className="capitalize">
+                                                {category}
+                                            </SelectItem>
                                         ))}
-                                </tbody>
-                            </table>
-                            {doctors.length === 0 && (
-                                <div className="text-center py-8">
-                                    <div className="text-gray-500">
-                                        <h3 className="text-lg font-medium mb-2">Brak lekarzy</h3>
-                                        <p className="text-sm">Rozpocznij od dodania pierwszego lekarza.</p>
+                                    </SelectContent>
+                                </Select>
+                                <span className="text-sm text-gray-500">
+                                    ({filteredDoctors.length} z {doctors.length})
+                                </span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imię i Nazwisko</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specjalizacja</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategoria</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Godziny przyjęć</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akcje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredDoctors
+                                            .slice()
+                                            .sort((a, b) => (a.order_position || 0) - (b.order_position || 0))
+                                            .map((doctor) => (
+                                                <tr key={doctor.id} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        Dr. {doctor.first_name} {doctor.last_name}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doctor.specialization}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        <Badge variant="outline" className="capitalize">
+                                                            {doctor.menu_category || 'lekarze'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                                                        <div className="truncate max-h-16 overflow-hidden" title={doctor.schedule ? doctor.schedule.replace(/<[^>]*>/g, '') : 'Brak informacji'}>
+                                                            {doctor.schedule ? <div dangerouslySetInnerHTML={{ __html: doctor.schedule }} className="prose prose-sm max-w-none" /> : 'Brak informacji'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Badge
+                                                            variant={doctor.is_active ? 'default' : 'secondary'}
+                                                            className={doctor.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                                                        >
+                                                            {doctor.is_active ? 'Aktywny' : 'Nieaktywny'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                        <Button variant="outline" size="sm" onClick={() => setEditingDoctor(doctor)} title="Edytuj lekarza">
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => onDelete('doctors', doctor.id)}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            title="Usuń lekarza"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                                {filteredDoctors.length === 0 && (
+                                    <div className="text-center py-8">
+                                        <div className="text-gray-500">
+                                            <h3 className="text-lg font-medium mb-2">{selectedCategory === 'wszystkie' ? 'Brak lekarzy' : `Brak lekarzy w kategorii "${selectedCategory}"`}</h3>
+                                            <p className="text-sm">
+                                                {selectedCategory === 'wszystkie' ? 'Rozpocznij od dodania pierwszego lekarza.' : 'Zmień filtr kategorii lub dodaj lekarzy w tej kategorii.'}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </CardContent>
             </Card>

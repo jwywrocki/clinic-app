@@ -231,6 +231,7 @@ export default function PolishAdminPanel() {
                     content: d.content,
                     meta_description: d.meta_description || '',
                     is_published: d.is_published,
+                    doctors_category: d.doctors_category === undefined ? null : d.doctors_category,
                     created_by: currentUser?.id,
                 },
                 d.id || null,
@@ -274,6 +275,7 @@ export default function PolishAdminPanel() {
                     title: d.title,
                     description: d.description || '',
                     icon: d.icon || '',
+                    is_published: d.is_published !== undefined ? d.is_published : true,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 },
@@ -299,10 +301,9 @@ export default function PolishAdminPanel() {
                     bio: d.bio || '',
                     image_url: d.image_url || '',
                     schedule: d.schedule || '',
-                    is_active: d.is_active,
-                    order_position: d.order_position || 0,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    is_active: d.is_active ?? true,
+                    order_position: d.order_position || 1,
+                    menu_category: d.menu_category || 'lekarze',
                 },
                 d.id || null,
                 setDoctors,
@@ -332,6 +333,50 @@ export default function PolishAdminPanel() {
                 menuItems,
                 () => MenuCache.clearCache()
             );
+        } finally {
+            setIsSavingMenu(false);
+        }
+    };
+
+    const updateMenuOrder = async (updatedItems: MenuItem[]) => {
+        setIsSavingMenu(true);
+        try {
+            const supabase = createSupabaseClient();
+            if (!supabase) {
+                toast({ title: 'Błąd', description: 'Klient Supabase nie jest zainicjowany.', variant: 'destructive' });
+                return;
+            }
+
+            const updates = updatedItems.map((item) => ({
+                id: item.id,
+                order_position: item.order_position,
+                parent_id: item.parent_id,
+                updated_at: new Date().toISOString(),
+            }));
+
+            for (const update of updates) {
+                const { error } = await supabase
+                    .from('menu_items')
+                    .update({
+                        order_position: update.order_position,
+                        parent_id: update.parent_id,
+                        updated_at: update.updated_at,
+                    })
+                    .eq('id', update.id);
+
+                if (error) throw error;
+            }
+
+            setMenuItems(updatedItems);
+            MenuCache.clearCache();
+
+            toast({
+                title: 'Sukces',
+                description: 'Pozycje menu zostały zaktualizowane.',
+            });
+        } catch (error: any) {
+            console.error('Błąd aktualizacji pozycji menu:', error);
+            toast({ title: 'Błąd', description: error.message || 'Nie udało się zaktualizować pozycji menu.', variant: 'destructive' });
         } finally {
             setIsSavingMenu(false);
         }
@@ -716,7 +761,7 @@ export default function PolishAdminPanel() {
                             <PagesManagement pages={pages} onSave={savePage} onDelete={(id) => deleteItem('pages', id)} isSaving={isSavingPage} />
                         )}
                         {activeTab === 'menus' && hasPermission('manage_menus') && (
-                            <MenuManagement menuItems={menuItems} onSave={saveMenuItem} onDelete={(id) => deleteItem('menu_items', id)} isSaving={isSavingMenu} />
+                            <MenuManagement menuItems={menuItems} onSave={saveMenuItem} onUpdateOrder={updateMenuOrder} onDelete={(id) => deleteItem('menu_items', id)} isSaving={isSavingMenu} />
                         )}
                         {activeTab === 'doctors' && hasPermission('manage_pages') && (
                             <DoctorsManagement doctors={doctors} onSave={saveDoctor} onDelete={(id) => deleteItem('doctors', id)} isSaving={isSavingDoctor} />

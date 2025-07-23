@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Heart, Users, Shield, CheckCircle, Calendar, Phone, Activity, Stethoscope } from 'lucide-react';
+import { Calendar, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { createSupabaseClient } from '@/lib/supabase';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
@@ -26,29 +26,35 @@ interface Service {
     icon: string;
 }
 
-const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
-    users: Users,
-    heart: Heart,
-    activity: Activity,
-    shield: Shield,
-    stethoscope: Stethoscope,
+const iconEmojiMap: { [key: string]: string } = {
+    heart: '❤️',
+    stethoscope: '🩺',
+    pill: '💊',
+    syringe: '💉',
+    bandage: '🩹',
+    tooth: '🦷',
+    eye: '👁️',
+    brain: '🧠',
+    lungs: '🫁',
+    bone: '🦴',
+    microscope: '🔬',
+    'x-ray': '🩻',
+    thermometer: '🌡️',
+    baby: '👶',
+    'pregnant-woman': '🤰',
+    elderly: '👴',
+    wheelchair: '♿',
+    ambulance: '🚑',
+    hospital: '🏥',
+    'first-aid': '🆘',
 };
 
-const getIconComponent = (iconName: string | undefined): React.ComponentType<{ className?: string }> => {
+const getIconEmoji = (iconName: string | undefined): string => {
     if (!iconName) {
-        return CheckCircle;
+        return '🏥'; // Default hospital icon
     }
 
-    if (iconMap[iconName]) {
-        return iconMap[iconName];
-    }
-
-    const lowerIconName = iconName.toLowerCase();
-    if (iconMap[lowerIconName]) {
-        return iconMap[lowerIconName];
-    }
-
-    return CheckCircle;
+    return iconEmojiMap[iconName] || '🏥';
 };
 
 export default function ServicesPage() {
@@ -75,7 +81,11 @@ export default function ServicesPage() {
                     setPageContent(pageData);
                 }
 
-                const { data: servicesData, error: servicesError } = await supabase.from('services').select('id, title, description, icon');
+                const { data: servicesData, error: servicesError } = await supabase
+                    .from('services')
+                    .select('id, title, description, icon')
+                    .eq('is_published', true)
+                    .order('created_at', { ascending: true });
 
                 if (servicesError) {
                     console.error('Error fetching services:', servicesError);
@@ -123,20 +133,6 @@ export default function ServicesPage() {
                                         'W SPZOZ GOZ Łopuszno oferujemy szeroki wachlarz usług medycznych, aby sprostać potrzebom zdrowotnym naszych pacjentów. Nasz doświadczony personel i nowoczesny sprzęt gwarantują najwyższą jakość opieki.',
                                 }}
                             />
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-                                    <Link href="/kontakt#formularz">
-                                        <Calendar className="h-5 w-5 mr-2" />
-                                        Umów wizytę
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" size="lg" className="border-blue-600 text-blue-600 hover:bg-blue-50" asChild>
-                                    <Link href="tel:+48413914027">
-                                        <Phone className="h-5 w-5 mr-2" />
-                                        Zadzwoń do nas
-                                    </Link>
-                                </Button>
-                            </div>
                         </div>
                     </section>
                 </AnimatedSection>
@@ -147,16 +143,16 @@ export default function ServicesPage() {
                         <div className="container mx-auto px-4">
                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {services.map((service, index) => {
-                                    const IconComponent = getIconComponent(service.icon);
+                                    const iconEmoji = getIconEmoji(service.icon);
                                     return (
-                                        <Card key={service.id || index} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
+                                        <Card key={service.id || index} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg h-full">
                                             <CardHeader className="text-center pb-4">
                                                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                                                    <IconComponent className="h-8 w-8 text-white" />
+                                                    <span className="text-3xl">{iconEmoji}</span>
                                                 </div>
                                                 <CardTitle className="text-xl font-bold text-gray-900">{service.title}</CardTitle>
                                             </CardHeader>
-                                            <CardContent className="space-y-4">
+                                            <CardContent className="space-y-4 flex-1">
                                                 <div className="text-gray-600 text-center leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: service.description }} />
                                             </CardContent>
                                         </Card>

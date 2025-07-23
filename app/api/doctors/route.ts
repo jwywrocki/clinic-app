@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 // POST /api/doctors
 export async function POST(request: Request) {
     try {
-        const { first_name, last_name, specialization, bio = '', image_url = '', schedule = '', is_active = true, order_position = 0 } = await request.json();
+        const { first_name, last_name, specialization, bio = '', image_url = '', schedule = '', is_active = true, order_position = 1, menu_category = 'lekarze' } = await request.json();
 
         if (!first_name || !last_name || !specialization) {
             return NextResponse.json({ error: 'Brakuje first_name, last_name lub specialization' }, { status: 400 });
@@ -45,9 +45,10 @@ export async function POST(request: Request) {
             specialization,
             bio,
             image_url,
-            schedule,
+            schedule: schedule || '',
             is_active,
             order_position,
+            menu_category,
             created_at: now,
             updated_at: now,
         };
@@ -68,7 +69,7 @@ export async function PATCH(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.pathname.split('/').pop();
-        const { first_name, last_name, specialization, bio, image_url, schedule, is_active, order_position } = await request.json();
+        const { first_name, last_name, specialization, bio, image_url, schedule, is_active, order_position, menu_category } = await request.json();
 
         if (!id) {
             return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
@@ -83,6 +84,7 @@ export async function PATCH(request: Request) {
         if (schedule !== undefined) update.schedule = schedule;
         if (is_active !== undefined) update.is_active = is_active;
         if (order_position !== undefined) update.order_position = order_position;
+        if (menu_category !== undefined) update.menu_category = menu_category;
 
         const { data, error } = await supabase.from('doctors').update(update).eq('id', id).select().single();
 

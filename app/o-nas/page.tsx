@@ -188,31 +188,6 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* Our Team */}
-                <section className="py-20 bg-white">
-                    <div className="container mx-auto px-4">
-                        <FadeIn direction="up" delay={0} threshold={0.2}>
-                            <div className="text-center mb-16">
-                                <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Nasz Zespół</h2>
-                                <p className="text-xl text-gray-600">Doświadczeni specjaliści dbający o Twoje zdrowie</p>
-                            </div>
-                        </FadeIn>
-                        <AnimatedGroup animation="fadeInUp" staggerDelay={200} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {teamMembers.map((member, index) => (
-                                <Card key={member.id || index} className="text-center border-0 shadow-lg overflow-hidden">
-                                    <CardHeader>
-                                        <CardTitle className="text-xl font-bold text-gray-900">{`${member.first_name} ${member.last_name}`}</CardTitle>
-                                        <p className="text-gray-600">Specjalizacja: {member.specialization}</p>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-gray-600">{member.bio}</p>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </AnimatedGroup>
-                    </div>
-                </section>
-
                 {/* CTA Section */}
                 <FadeIn direction="up" delay={0} threshold={0.3}>
                     <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800">

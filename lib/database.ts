@@ -163,7 +163,7 @@ export async function getServices() {
             return null;
         }
 
-        const { data, error } = await supabase.from('services').select('*').order('created_at');
+        const { data, error } = await supabase.from('services').select('*').eq('is_published', true).order('created_at');
 
         if (error) {
             throw error;

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Page } from '@/lib/types/pages';
 import { Survey } from '@/lib/types/surveys';
@@ -55,6 +56,7 @@ export function PagesManagement({ pages, onSave, onDelete, isSaving = false }: P
             content: '',
             is_published: false,
             survey_id: undefined,
+            doctors_category: null,
             created_at: '',
             updated_at: '',
         });
@@ -108,6 +110,21 @@ export function PagesManagement({ pages, onSave, onDelete, isSaving = false }: P
                                             </option>
                                         ))}
                                 </select>
+                            </div>
+                            <div>
+                                <Label htmlFor="doctorsCategory">Kategoria lekarzy do wyświetlenia</Label>
+                                <Select value={editingPage.doctors_category || 'none'} onValueChange={(value) => setEditingPage({ ...editingPage, doctors_category: value === 'none' ? null : value })}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Wybierz kategorię lekarzy (opcjonalne)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Brak wyświetlania lekarzy</SelectItem>
+                                        <SelectItem value="all">Wszystkie kategorie</SelectItem>
+                                        <SelectItem value="lekarze">Lekarze</SelectItem>
+                                        <SelectItem value="pielegniarki">Pielęgniarki</SelectItem>
+                                        <SelectItem value="inne">Inne</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <input type="checkbox" id="pagePublished" checked={editingPage.is_published} onChange={(e) => setEditingPage({ ...editingPage, is_published: e.target.checked })} />

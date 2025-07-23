@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 // POST /api/pages
 export async function POST(request: Request) {
     try {
-        const { title, slug, content, meta_description = null, is_published = false, survey_id = null, created_by = null } = await request.json();
+        const { title, slug, content, meta_description = null, is_published = false, survey_id = null, created_by = null, doctors_category = null } = await request.json();
 
         if (!title || !slug || !content) {
             return NextResponse.json({ error: 'Brakuje title, slug lub content' }, { status: 400 });
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
             is_published,
             survey_id,
             created_by,
+            doctors_category,
             created_at: now,
             updated_at: now,
         };
@@ -81,6 +82,7 @@ export async function PATCH(request: Request) {
         if (body.is_published !== undefined) update.is_published = body.is_published;
         if (body.survey_id !== undefined) update.survey_id = body.survey_id;
         if (body.created_by !== undefined) update.created_by = body.created_by;
+        if ('doctors_category' in body) update.doctors_category = body.doctors_category;
 
         const { data, error } = await supabase.from('pages').update(update).eq('id', id).select().single();
 

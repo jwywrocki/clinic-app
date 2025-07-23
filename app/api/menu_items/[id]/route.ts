@@ -28,6 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const now = new Date().toISOString();
         const updateData = {
             ...body,
+            url: body.url || null,
             parent_id: body.parent_id || null, // Convert empty string or undefined to null
             updated_at: now,
         };

@@ -197,6 +197,29 @@ export default function ContactPage() {
                             <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Dane Kontaktowe</h2>
                             {allContactGroups.length > 0 ? (
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {/* eRejestracja */}
+                                    <Card className="border-2 border-blue-500 shadow-lg bg-gradient-to-r from-blue-50 to-blue-100">
+                                        <div className="p-6 text-center">
+                                            <div className="bg-blue-500 p-3 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                                                <Clock className="h-6 w-6 text-white" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-2">eRejestracja Online</h3>
+                                            <p className="text-gray-600 mb-4 text-sm">Umów wizytę online w naszym systemie eRejestracji</p>
+                                            <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors w-full" size="sm">
+                                                <a href="http://83.3.112.24/portal" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center">
+                                                    Przejdź do eRejestracji
+                                                    <svg className="ml-2 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                                        />
+                                                    </svg>
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </Card>
                                     {allContactGroups.map((group) => (
                                         <Card key={group.id} className="border border-gray-200 shadow-sm bg-white">
                                             <div className="p-6">

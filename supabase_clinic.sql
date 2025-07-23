@@ -55,6 +55,7 @@ create table if not exists pages (
     is_published boolean default false,
     created_by uuid references users (id),
     survey_id uuid references surveys (id),
+    doctors_category text,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
 );
@@ -63,7 +64,7 @@ create table if not exists pages (
 create table if not exists menu_items (
     id uuid primary key default gen_random_uuid (),
     title text not null,
-    url text not null,
+    url text,
     order_position integer not null,
     parent_id uuid references menu_items (id),
     is_published boolean default false,
@@ -83,6 +84,7 @@ create table if not exists doctors (
     is_active boolean default true,
     image_url text,
     order_position integer not null default 1,
+    menu_category text not null default 'lekarze',
     page_id uuid references pages (id) on delete cascade,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
@@ -137,6 +139,7 @@ create table if not exists services (
     id uuid primary key default gen_random_uuid (),
     title text not null,
     description text not null,
+    is_published boolean default false,
     icon text not null,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()

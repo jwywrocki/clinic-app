@@ -2,54 +2,39 @@
 
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Stethoscope, Calendar, ChevronRight } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
-
-interface Doctor {
-    id: string;
-    first_name: string;
-    last_name: string;
-    specialization: string;
-    bio?: string;
-    schedule?: string;
-}
+import { DoctorsList } from '@/components/doctors-list';
 
 interface PageContent {
     id: string;
     title: string;
     content: string;
     slug: string;
+    doctors_category?: string;
 }
 
 export default function DoctorsPage() {
-    const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [pageContent, setPageContent] = useState<PageContent | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true);
             try {
                 const supabase = createSupabaseClient();
-                if (!supabase) return;
+                if (!supabase) {
+                    console.warn('Supabase not configured');
+                    return;
+                }
 
                 const { data: pageData, error: pageError } = await supabase.from('pages').select('*').eq('slug', 'lekarze').single();
 
                 if (pageError) console.error('Error fetching doctors page content:', pageError);
                 else setPageContent(pageData);
-
-                const { data: doctorsData, error: doctorsError } = await supabase.from('doctors').select('*').eq('is_active', true).order('order_position', { ascending: true });
-
-                if (doctorsError) {
-                    console.error('Error fetching doctors list:', doctorsError);
-                } else {
-                    setDoctors(doctorsData || []);
-                }
             } catch (error) {
                 console.error('Error in fetchData (Doctors):', error);
             } finally {
@@ -74,7 +59,7 @@ export default function DoctorsPage() {
 
     return (
         <LayoutWrapper>
-            <div id="main-content" className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+            <div id="main-content" className="bg-gradient-to-br from-blue-50 to-white">
                 <AnimatedSection animation="fadeInUp">
                     <section className="py-20">
                         <div className="container mx-auto px-4 text-center">
@@ -95,48 +80,23 @@ export default function DoctorsPage() {
                 <AnimatedSection animation="fadeInUp" delay={200}>
                     <section className="py-10 bg-white">
                         <div className="container mx-auto px-4">
-                            {doctors.length > 0 ? (
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {doctors.map((doctor) => (
-                                        <Card key={doctor.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg overflow-hidden">
-                                            <CardHeader>
-                                                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center justify-center">
-                                                    Dr. {doctor.first_name} {doctor.last_name}
-                                                    <Badge variant="secondary" className="m-2 mt-2 bg-blue-100 text-blue-700 text-center">
-                                                        {doctor.specialization}
-                                                    </Badge>
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="text-left space-y-3">
-                                                <p className="text-gray-600 line-clamp-3">{doctor.bio || 'Doświadczony specjalista w swojej dziedzinie.'}</p>
-                                                {doctor.schedule && <div className="text-sm text-gray-500 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: doctor.schedule }} />}
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-10">
-                                    <Stethoscope className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-xl text-gray-500">Obecnie nie ma dostępnych informacji o lekarzach. Prosimy spróbować później.</p>
-                                </div>
-                            )}
+                            <DoctorsList category={pageContent?.doctors_category} />
                         </div>
                     </section>
                 </AnimatedSection>
-                <AnimatedSection animation="fadeInUp" delay={300}>
-                    <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800">
-                        <div className="container mx-auto px-4 text-center">
-                            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">Chcesz umówić wizytę?</h2>
-                            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">Nasi specjaliści są do Twojej dyspozycji. Skontaktuj się z rejestracją, aby ustalić dogodny termin.</p>
-                            <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100" asChild>
-                                <Link href="/kontakt#formularz">
-                                    <Calendar className="h-5 w-5 mr-2" />
-                                    Umów się na wizytę
-                                </Link>
-                            </Button>
-                        </div>
-                    </section>
-                </AnimatedSection>
+
+                <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800">
+                    <div className="container mx-auto px-4 text-center">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">Chcesz umówić wizytę?</h2>
+                        <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">Nasi specjaliści są do Twojej dyspozycji. Skontaktuj się z rejestracją, aby ustalić dogodny termin.</p>
+                        <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100" asChild>
+                            <Link href="/kontakt#formularz">
+                                <Calendar className="h-5 w-5 mr-2" />
+                                Umów się na wizytę
+                            </Link>
+                        </Button>
+                    </div>
+                </section>
             </div>
         </LayoutWrapper>
     );

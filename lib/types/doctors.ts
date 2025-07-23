@@ -8,6 +8,7 @@ export interface Doctor {
     schedule?: string;
     is_active: boolean;
     order_position?: number;
+    menu_category: string;
     created_at: string;
     updated_at: string;
 }
