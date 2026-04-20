@@ -5,6 +5,8 @@ import { ensureSchedulerInitialized } from '@/lib/scheduler-init';
 import { handleAutoBackup, handleBackupCleanup, calculateNextBackupTime } from '@/lib/backup-utils';
 import { requireRole, isAuthError } from '@/lib/auth';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 async function authenticateSchedulerRequest(request: NextRequest): Promise<NextResponse | null> {
   const session = await requireRole(request, 'admin');
@@ -64,7 +66,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await authenticateSchedulerRequest(request);
+  if (authError) return authError;
+
   await ensureSchedulerInitialized();
 
   try {
@@ -99,8 +104,6 @@ export async function GET() {
     const inProgressBackups =
       allBackups?.filter((backup: any) => backup.status === 'in_progress') || [];
 
-    const fs = require('fs');
-    const path = require('path');
     const backupsDir = path.join(process.cwd(), 'backups');
     let physicalBackupsCount = 0;
 

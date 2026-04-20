@@ -2,8 +2,10 @@
 const nextConfig = {
     reactStrictMode: true,
     // Treat Node.js-only DB packages as server externals (not bundled for server components)
-    serverExternalPackages: ['pg', 'pg-connection-string', 'mysql2'],
+    serverExternalPackages: ['pg', 'pg-connection-string', 'mysql2', 'node-cron'],
     eslint: {
+        // Lint only source directories — skip backups/, logs/, public/
+        dirs: ['app', 'components', 'hooks', 'lib'],
         ignoreDuringBuilds: false,
     },
     typescript: {

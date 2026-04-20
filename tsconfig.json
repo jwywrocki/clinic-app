@@ -32,14 +32,9 @@
       "@/*": [
         "./*"
       ],
-      "@/components": ["./components"],
-      "@/lib": ["./lib"],
-      "@/app": ["./app"],
-      "@/hooks": ["./hooks"],
-      "@/types": ["./lib/types"],
+      "@/domain": ["./lib/domain"],
       "@/services": ["./lib/services"],
-      "@/repositories": ["./lib/repositories"],
-      "@/domain": ["./lib/domain"]
+      "@/repositories": ["./lib/repositories"]
     }
   },
   "include": [
@@ -50,6 +45,8 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next",
+    "backups",
+    "logs"
   ]
 }

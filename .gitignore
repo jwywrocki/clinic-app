@@ -25,12 +25,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# linter / formatter configs & caches
-.eslintrc*
+# linter / formatter caches
 .eslintcache
-eslint.config.*
-.prettierrc*
-.prettierignore
 .prettiercache
 
 # OS files
