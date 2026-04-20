@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDB } from '@/lib/db';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/news/[id]
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
-
-        const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
-
-        if (error) throw error;
-
+        const { id } = params;
+        const db = getDB();
+        const data = await db.getById('news', id);
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('GET /api/news/:id error', e);
@@ -19,10 +13,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 }
 
-// PATCH /api/news/[id]
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
+        const { id } = params;
         const body = await request.json();
 
         const now = new Date().toISOString();
@@ -31,14 +24,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             updated_at: now,
         };
 
-        if (updateData.is_published && !updateData.published_at) {
+        if ((updateData as any).is_published && !(updateData as any).published_at) {
             updateData.published_at = now;
         }
-
-        const { data, error } = await supabase.from('news').update(updateData).eq('id', id).select().single();
-
-        if (error) throw error;
-
+        const db = getDB();
+        const data = await db.updateById('news', id, updateData);
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('PATCH /api/news/:id error', e);
@@ -46,15 +36,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 }
 
-// DELETE /api/news/[id]
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
-
-        const { error } = await supabase.from('news').delete().eq('id', id);
-
-        if (error) throw error;
-
+        const { id } = params;
+        const db = getDB();
+        await db.deleteById('news', id);
         return NextResponse.json({ message: 'News item deleted successfully' });
     } catch (e: any) {
         console.error('DELETE /api/news/:id error', e);

@@ -1,80 +1,34 @@
-// app/api/contact_groups/route.ts
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { ContactService } from '@/lib/services/contact';
+import { CreateContactGroupSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/contact_groups
 export async function GET() {
-    try {
-        const { data, error } = await supabase.from('contact_groups').select('*, contact_details(*)').order('order_position', { ascending: true });
-
-        if (error) {
-            console.error('[GET /api/contact_groups] Supabase error:', error);
-            throw error;
-        }
-
-        return NextResponse.json(data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            },
-        });
-    } catch (e: any) {
-        console.error('GET /api/contact_groups error', e);
-        return NextResponse.json(
-            { error: e.message },
-            {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-    }
+  try {
+    const groupsWithDetails = await ContactService.getAllGroupsWithDetails();
+    return NextResponse.json(groupsWithDetails, {
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+    });
+  } catch (e) {
+    console.error('GET /api/contact_groups error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// OPTIONS /api/contact_groups (for CORS preflight)
-export async function OPTIONS() {
-    return NextResponse.json(
-        {},
-        {
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            },
-        }
-    );
-}
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-// POST /api/contact_groups
-export async function POST(request: Request) {
-    try {
-        const { label, in_hero = false, in_footer = true, order_position } = await request.json();
-        if (!label) {
-            return NextResponse.json({ error: 'Label is required' }, { status: 400 });
-        }
-
-        const now = new Date().toISOString();
-        const insertData = {
-            label,
-            in_hero,
-            in_footer,
-            order_position,
-            created_at: now,
-            updated_at: now,
-        };
-
-        const { data, error } = await supabase.from('contact_groups').insert([insertData]).select('*, contact_details(*)').single();
-
-        if (error) throw error;
-        return NextResponse.json(data, { status: 201 });
-    } catch (e: any) {
-        console.error('POST /api/contact_groups error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const body = await request.json();
+    const parsed = CreateContactGroupSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
+    const groupWithDetails = await ContactService.createGroup(parsed.data);
+    return NextResponse.json(groupWithDetails, { status: 201 });
+  } catch (e) {
+    console.error('POST /api/contact_groups error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

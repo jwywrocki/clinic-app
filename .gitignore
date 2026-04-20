@@ -1,5 +1,7 @@
 # dependencies
 /node_modules
+pnpm-lock.yaml
+yarn.lock
 
 # next.js
 /.next/
@@ -7,6 +9,7 @@
 
 # production
 /build
+/dist
 
 # debug
 npm-debug.log*
@@ -14,18 +17,43 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (keep .env.example as template)
 .env*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# uploads
+# linter / formatter configs & caches
+.eslintrc*
+.eslintcache
+eslint.config.*
+.prettierrc*
+.prettierignore
+.prettiercache
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/*
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# test coverage
+/coverage
+
+# uploads & runtime data
 /public/uploads
-
-# backups
 /backups
-
-# logs
 /logs
+
+# misc
+*.tgz
+*.log

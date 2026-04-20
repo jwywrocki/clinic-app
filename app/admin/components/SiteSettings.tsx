@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Globe, Search, Eye, Link as LinkIcon, MapPin, Upload, Image as ImageIcon } from 'lucide-react';
+import { Save, Globe, Search, Eye, Link as LinkIcon, MapPin, Upload, Image as ImageIcon, RefreshCw, FileCode } from 'lucide-react';
 import { FadeIn } from '@/components/ui/animation-helpers';
 
 interface SiteSettingsProps {
@@ -32,7 +32,35 @@ export function SiteSettings({ onSave, currentUser }: SiteSettingsProps) {
         meta_language: 'pl',
         meta_charset: 'UTF-8',
         canonical_url: '',
-        robots_txt: 'User-agent: *\nAllow: /',
+        robots_txt: `# Sitemap
+Sitemap: https://gozlopuszno.pl/sitemap.xml
+
+# Zezwól na dostęp dla wszystkich robotów
+User-agent: *
+Allow: /
+
+# Chronione obszary
+Disallow: /admin/
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /.next/
+Disallow: /*.json$
+Disallow: /*?*sort=
+Disallow: /*?*filter=
+
+# Zezwól na dostęp do publicznych API
+Allow: /api/public/
+
+# Specyficzne dobrze znane roboty
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+# Crawl-delay dla mniej ważnych robotów
+User-agent: *
+Crawl-delay: 1`,
         favicon_url: '/favicon.ico',
         sitemap_url: '/sitemap.xml',
         schema_type: 'MedicalClinic',
@@ -55,6 +83,7 @@ export function SiteSettings({ onSave, currentUser }: SiteSettingsProps) {
     const [savingTechnicalSeo, setSavingTechnicalSeo] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [uploadingFavicon, setUploadingFavicon] = useState(false);
+    const [generatingSitemap, setGeneratingSitemap] = useState(false);
     const faviconInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -482,6 +511,42 @@ export function SiteSettings({ onSave, currentUser }: SiteSettingsProps) {
         }
     };
 
+    const generateSitemap = async () => {
+        setGeneratingSitemap(true);
+        try {
+            const response = await fetch('/api/admin/sitemap/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: currentUser?.id || null,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || data.details || 'Nie udało się wygenerować mapy witryny');
+            }
+
+            toast({
+                title: 'Sukces',
+                description: `Plik sitemap.xml został wygenerowany pomyślnie (${data.urls || '?'} URL-i)`,
+                variant: 'success',
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Nie udało się wygenerować mapy witryny';
+            toast({
+                title: 'Błąd',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+        } finally {
+            setGeneratingSitemap(false);
+        }
+    };
+
     if (loading) {
         return (
             <Card className="border-0 shadow-lg">
@@ -836,7 +901,38 @@ export function SiteSettings({ onSave, currentUser }: SiteSettingsProps) {
                             </div>
 
                             <div>
-                                <Label htmlFor="robots_txt">Zawartość robots.txt</Label>
+                                <Label htmlFor="sitemap_management">Zarządzanie Sitemapą (sitemap.xml)</Label>
+                                <div className="mt-1 flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                                    <FileCode className="h-8 w-8 text-blue-500" />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-900">Mapa witryny</p>
+                                        <p className="text-xs text-gray-500">Wygeneruj fizyczny plik sitemap.xml, który pomoże wyszukiwarkom zindeksować stronę.</p>
+                                    </div>
+                                    <Button
+                                        onClick={generateSitemap}
+                                        disabled={generatingSitemap}
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
+                                    >
+                                        {generatingSitemap ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                                        Wygeneruj
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="ghost"
+                                        size="sm"
+                                    >
+                                        <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer">
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            Podgląd
+                                        </a>
+                                    </Button>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <Label htmlFor="robots_txt">Robots.txt</Label>
                                 <Textarea id="robots_txt" value={settings.robots_txt} onChange={(e) => handleSettingChange('robots_txt', e.target.value)} rows={6} className="mt-1 font-mono text-sm" />
                                 <p className="text-xs text-gray-500 mt-1">Instrukcje dla robotów wyszukiwarek</p>
                             </div>

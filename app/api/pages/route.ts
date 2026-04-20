@@ -1,117 +1,82 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { PagesService } from '@/lib/services/pages';
+import { CreatePageSchema, UpdatePageSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/pages or /api/pages/:id
 export async function GET(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const parts = url.pathname.split('/');
-        const maybeId = parts[parts.length - 1];
+  try {
+    const url = new URL(request.url);
+    const parts = url.pathname.split('/');
+    const maybeId = parts[parts.length - 1];
 
-        if (maybeId && maybeId !== 'pages') {
-            const { data, error } = await supabase.from('pages').select('*').eq('id', maybeId).single();
-
-            if (error) throw error;
-
-            return NextResponse.json(data);
-        }
-
-        const { data, error } = await supabase.from('pages').select('*').order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/pages error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    if (maybeId && maybeId !== 'pages') {
+      const data = await PagesService.getById(maybeId);
+      if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return NextResponse.json(data);
     }
+    const list = await PagesService.getAll();
+    return NextResponse.json(list);
+  } catch (e: unknown) {
+    console.error('GET /api/pages error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// POST /api/pages
-export async function POST(request: Request) {
-    try {
-        const { title, slug, content, meta_description = null, is_published = false, survey_id = null, created_by = null, doctors_category = null } = await request.json();
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!title || !slug || !content) {
-            return NextResponse.json({ error: 'Brakuje title, slug lub content' }, { status: 400 });
-        }
-
-        const now = new Date().toISOString();
-        const insert = {
-            title,
-            slug,
-            content,
-            meta_description,
-            is_published,
-            survey_id,
-            created_by,
-            doctors_category,
-            created_at: now,
-            updated_at: now,
-        };
-
-        const { data, error } = await supabase.from('pages').insert([insert]).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data, { status: 201 });
-    } catch (e: any) {
-        console.error('POST /api/pages error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const body = await request.json();
+    const parsed = CreatePageSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
+    const created = await PagesService.create(parsed.data);
+    return NextResponse.json(created, { status: 201 });
+  } catch (e: unknown) {
+    console.error('POST /api/pages error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// PATCH /api/pages/:id
-export async function PATCH(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
-        const body = await request.json();
+export async function PATCH(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const update: any = { updated_at: new Date().toISOString() };
-        if (body.title !== undefined) update.title = body.title;
-        if (body.slug !== undefined) update.slug = body.slug;
-        if (body.content !== undefined) update.content = body.content;
-        if (body.meta_description !== undefined) update.meta_description = body.meta_description;
-        if (body.is_published !== undefined) update.is_published = body.is_published;
-        if (body.survey_id !== undefined) update.survey_id = body.survey_id;
-        if (body.created_by !== undefined) update.created_by = body.created_by;
-        if ('doctors_category' in body) update.doctors_category = body.doctors_category;
-
-        const { data, error } = await supabase.from('pages').update(update).eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/pages/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id || id === 'pages') {
+      return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
     }
+    const body = await request.json();
+    const parsed = UpdatePageSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
+    }
+    const updated = await PagesService.update(id, parsed.data);
+    return NextResponse.json(updated);
+  } catch (e: unknown) {
+    console.error('PATCH /api/pages/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// DELETE /api/pages/:id
-export async function DELETE(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const { data, error } = await supabase.from('pages').delete().eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('DELETE /api/pages/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id || id === 'pages') {
+      return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
     }
+    await PagesService.delete(id);
+    return NextResponse.json({ message: 'Page deleted successfully' });
+  } catch (e: unknown) {
+    console.error('DELETE /api/pages/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

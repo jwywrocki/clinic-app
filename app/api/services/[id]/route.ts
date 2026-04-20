@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDB } from '@/lib/db';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/services/[id]
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
-
-        const { data, error } = await supabase.from('services').select('*').eq('id', id).single();
-
-        if (error) throw error;
-
+        const { id } = params;
+        const db = getDB();
+        const data = await db.getById('services', id);
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('GET /api/services/:id error', e);
@@ -19,10 +13,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 }
 
-// PATCH /api/services/[id]
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
+        const { id } = params;
         const body = await request.json();
 
         const now = new Date().toISOString();
@@ -30,11 +23,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             ...body,
             updated_at: now,
         };
-
-        const { data, error } = await supabase.from('services').update(updateData).eq('id', id).select().single();
-
-        if (error) throw error;
-
+        const db = getDB();
+        const data = await db.updateById('services', id, updateData);
         return NextResponse.json(data);
     } catch (e: any) {
         console.error('PATCH /api/services/:id error', e);
@@ -42,15 +32,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 }
 
-// DELETE /api/services/[id]
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
-        const { id } = await params;
-
-        const { error } = await supabase.from('services').delete().eq('id', id);
-
-        if (error) throw error;
-
+        const { id } = params;
+        const db = getDB();
+        await db.deleteById('services', id);
         return NextResponse.json({ message: 'Service deleted successfully' });
     } catch (e: any) {
         console.error('DELETE /api/services/:id error', e);

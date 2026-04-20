@@ -1,9 +1,5 @@
 import cron from 'node-cron';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { getDB } from '@/lib/db';
 
 const log = (message: string) => {
     console.log(`[SCHEDULER ${new Date().toISOString()}] ${message}`);
@@ -42,10 +38,11 @@ export async function initializeScheduler() {
 
 async function getBackupSettings() {
     try {
-        const { data: settings } = await supabase.from('site_settings').select('key, value').in('key', ['db_backup_enabled', 'db_backup_frequency', 'db_backup_retention_days']);
+        const db = getDB();
+        const settings = await db.list<any>('site_settings');
 
         const settingsMap =
-            settings?.reduce((acc, setting) => {
+            settings?.reduce((acc: Record<string, string>, setting: any) => {
                 acc[setting.key] = setting.value;
                 return acc;
             }, {} as Record<string, string>) || {};

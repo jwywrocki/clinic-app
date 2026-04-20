@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Contrast, ZoomIn, ZoomOut, RotateCcw, Settings, X } from 'lucide-react';
 import { useAccessibility } from '@/hooks/use-accessibility';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface AccessibilityToolbarProps {
     variant?: 'header' | 'floating';
@@ -15,6 +15,22 @@ interface AccessibilityToolbarProps {
 export function AccessibilityToolbar({ variant = 'floating', className = '' }: AccessibilityToolbarProps) {
     const { settings, toggleHighContrast, increaseFontSize, decreaseFontSize, resetFontSize, announceToScreenReader } = useAccessibility();
     const [isExpanded, setIsExpanded] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!isExpanded) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsExpanded(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isExpanded]);
 
     const handleToggleContrast = () => {
         toggleHighContrast();
@@ -101,7 +117,7 @@ export function AccessibilityToolbar({ variant = 'floating', className = '' }: A
     }
 
     return (
-        <div className={`fixed bottom-4 right-4 z-[100] ${className}`}>
+        <div ref={containerRef} className={`fixed bottom-4 right-4 z-[100] ${className}`}>
             {!isExpanded ? (
                 <Button
                     onClick={() => setIsExpanded(true)}

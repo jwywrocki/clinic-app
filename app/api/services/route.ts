@@ -1,104 +1,82 @@
-// app/api/services/route.ts
+import { type NextRequest, NextResponse } from 'next/server';
+import { ClinicServicesService } from '@/lib/services/clinic-services';
+import { CreateServiceSchema, UpdateServiceSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/services or /api/services/:id
 export async function GET(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const parts = url.pathname.split('/');
-        const maybeId = parts[parts.length - 1];
+  try {
+    const url = new URL(request.url);
+    const parts = url.pathname.split('/');
+    const maybeId = parts[parts.length - 1];
 
-        if (maybeId && maybeId !== 'services') {
-            const { data, error } = await supabase.from('services').select('*').eq('id', maybeId).single();
-
-            if (error) throw error;
-
-            return NextResponse.json(data);
-        }
-
-        const { data, error } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/services error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    if (maybeId && maybeId !== 'services') {
+      const data = await ClinicServicesService.getById(maybeId);
+      if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return NextResponse.json(data);
     }
+    const list = await ClinicServicesService.getPublished();
+    return NextResponse.json(list);
+  } catch (e: unknown) {
+    console.error('GET /api/services error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// POST /api/services
-export async function POST(request: Request) {
-    try {
-        const { title, description = '', icon = '', is_published = false } = await request.json();
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!title) {
-            return NextResponse.json({ error: 'Brakuje title' }, { status: 400 });
-        }
-
-        const now = new Date().toISOString();
-        const insert = { title, description, icon, is_published, created_at: now, updated_at: now };
-
-        const { data, error } = await supabase.from('services').insert([insert]).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data, { status: 201 });
-    } catch (e: any) {
-        console.error('POST /api/services error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const body = await request.json();
+    const parsed = CreateServiceSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
+    const created = await ClinicServicesService.create(parsed.data);
+    return NextResponse.json(created, { status: 201 });
+  } catch (e: unknown) {
+    console.error('POST /api/services error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// PATCH /api/services/:id
-export async function PATCH(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
-        const body = await request.json();
+export async function PATCH(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const update: any = { updated_at: new Date().toISOString() };
-        if (body.title !== undefined) update.title = body.title;
-        if (body.description !== undefined) update.description = body.description;
-        if (body.icon !== undefined) update.icon = body.icon;
-        if (body.is_published !== undefined) update.is_published = body.is_published;
-
-        const { data, error } = await supabase.from('services').update(update).eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/services/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id || id === 'services') {
+      return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
     }
+    const body = await request.json();
+    const parsed = UpdateServiceSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
+    }
+    const updated = await ClinicServicesService.update(id, parsed.data);
+    return NextResponse.json(updated);
+  } catch (e: unknown) {
+    console.error('PATCH /api/services/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// DELETE /api/services/:id
-export async function DELETE(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const { data, error } = await supabase.from('services').delete().eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('DELETE /api/services/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id || id === 'services') {
+      return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
     }
+    await ClinicServicesService.delete(id);
+    return NextResponse.json({ message: 'Service deleted successfully' });
+  } catch (e: unknown) {
+    console.error('DELETE /api/services/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

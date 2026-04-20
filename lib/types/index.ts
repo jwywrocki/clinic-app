@@ -5,5 +5,6 @@ export * from './menu';
 export * from './news';
 export * from './pages';
 export * from './services';
+export * from './specializations';
 export * from './surveys';
 export * from './users';

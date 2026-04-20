@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '@/lib/supabase';
+import { getDB } from '@/lib/db';
 
 interface SiteSettings {
     [key: string]: string;
@@ -6,49 +6,40 @@ interface SiteSettings {
 
 export async function getSiteSettings(): Promise<SiteSettings> {
     try {
-        const supabase = createSupabaseClient();
+        const db = getDB();
 
-        if (!supabase) {
-            console.warn('Supabase client not available, returning empty settings');
-            return {};
-        }
+        const settings = await db.list<any>('site_settings');
 
-        const { data: settings, error } = await supabase
-            .from('site_settings')
-            .select('key, value')
-            .in('key', [
-                'site_title',
-                'site_description',
-                'site_keywords',
-                'site_author',
-                'meta_viewport',
-                'meta_language',
-                'meta_charset',
-                'canonical_url',
-                'favicon_url',
-                'robots_txt',
-                'sitemap_url',
-                'schema_type',
-                'schema_name',
-                'schema_description',
-                'schema_address',
-                'schema_phone',
-                'schema_email',
-                'schema_opening_hours',
-                'structured_data_enabled',
-                'h1_title',
-                'meta_title_template',
-                'breadcrumb_enabled',
-            ]);
-
-        if (error) {
-            console.error('Error fetching site settings:', error);
-            return {};
-        }
+        const relevantKeys = [
+            'site_title',
+            'site_description',
+            'site_keywords',
+            'site_author',
+            'meta_viewport',
+            'meta_language',
+            'meta_charset',
+            'canonical_url',
+            'favicon_url',
+            'robots_txt',
+            'sitemap_url',
+            'schema_type',
+            'schema_name',
+            'schema_description',
+            'schema_address',
+            'schema_phone',
+            'schema_email',
+            'schema_opening_hours',
+            'structured_data_enabled',
+            'h1_title',
+            'meta_title_template',
+            'breadcrumb_enabled',
+        ];
 
         const settingsObj: SiteSettings = {};
-        settings?.forEach((setting) => {
-            settingsObj[setting.key] = setting.value || '';
+        settings?.forEach((setting: any) => {
+            if (relevantKeys.includes(setting.key)) {
+                settingsObj[setting.key] = setting.value || '';
+            }
         });
 
         return settingsObj;

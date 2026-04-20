@@ -1,8 +1,11 @@
 export interface NewsItem {
-    id: string;
-    title: string;
-    content: string;
-    is_published: boolean;
-    created_at: string;
-    updated_at: string;
+  id: string;
+  title: string;
+  content: string;
+  image_url?: string;
+  excerpt?: string;
+  is_published: boolean;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
 }

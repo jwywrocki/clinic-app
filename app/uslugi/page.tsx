@@ -1,12 +1,9 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { getDB } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Phone } from 'lucide-react';
 import Link from 'next/link';
-import { createSupabaseClient } from '@/lib/supabase';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { SkipLink } from '@/components/ui/skip-link';
@@ -57,58 +54,24 @@ const getIconEmoji = (iconName: string | undefined): string => {
     return iconEmojiMap[iconName] || '🏥';
 };
 
-export default function ServicesPage() {
-    const [pageContent, setPageContent] = useState<PageContent | null>(null);
-    const [services, setServices] = useState<Service[]>([]);
-    const [loading, setLoading] = useState(true);
+export default async function ServicesPage() {
+    const db = getDB();
+    
+    // Fetch page data on the server
+    const pages = await db.findWhere<PageContent>('pages', { slug: 'uslugi', is_published: true });
+    const pageContent = pages && pages.length > 0 ? pages[0] : null;
 
-    useEffect(() => {
-        const fetchPageData = async () => {
-            setLoading(true);
-            try {
-                const supabase = createSupabaseClient();
-                if (!supabase) {
-                    console.warn('Supabase client not initialized for Services page.');
-                    setLoading(false);
-                    return;
-                }
+    // Fetch services on the server
+    const services = await db.findWhere<Service>('services', { is_published: true }, {
+        orderBy: { column: 'created_at', ascending: true }
+    });
 
-                const { data: pageData, error: pageError } = await supabase.from('pages').select('*').eq('slug', 'uslugi').eq('is_published', true).single();
-
-                if (pageError) {
-                    console.error('Error fetching services page content:', pageError);
-                } else {
-                    setPageContent(pageData);
-                }
-
-                const { data: servicesData, error: servicesError } = await supabase
-                    .from('services')
-                    .select('id, title, description, icon')
-                    .eq('is_published', true)
-                    .order('created_at', { ascending: true });
-
-                if (servicesError) {
-                    console.error('Error fetching services:', servicesError);
-                } else {
-                    setServices(servicesData || []);
-                }
-            } catch (error) {
-                console.error('Error in fetchPageData (Services):', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPageData();
-    }, []);
-
-    if (loading) {
+    if (!pageContent) {
         return (
             <LayoutWrapper>
                 <div className="min-h-[calc(100vh-10rem)] bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Ładowanie strony Usługi...</p>
+                        <p className="text-gray-600">Nie znaleziono strony.</p>
                     </div>
                 </div>
             </LayoutWrapper>

@@ -1,95 +1,37 @@
-// app/api/contact_details/route.ts
+import { type NextRequest, NextResponse } from 'next/server';
+import { ContactService } from '@/lib/services/contact';
+import { CreateContactDetailSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-export async function GET(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const segments = url.pathname.split('/');
-        const maybeId = segments[segments.length - 1];
-
-        if (maybeId && maybeId !== 'contact_details') {
-            const { data, error } = await supabase.from('contact_details').select('*').eq('id', maybeId).single();
-            if (error) throw error;
-            return NextResponse.json(data);
-        }
-
-        const { data, error } = await supabase.from('contact_details').select('*');
-        if (error) throw error;
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/contact_details error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+export async function GET() {
+  try {
+    const list = await ContactService.getAllDetails();
+    return NextResponse.json(list);
+  } catch (e) {
+    console.error('GET /api/contact_details error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-export async function POST(request: Request) {
-    try {
-        const body = await request.json();
-        const { type, value, group_id, order_position = 0 } = body;
-        if (!type || !value) {
-            return NextResponse.json({ error: 'Brakuje typu lub wartości contact_details' }, { status: 400 });
-        }
-        if (!group_id) {
-            return NextResponse.json({ error: 'Brakuje group_id dla contact_details' }, { status: 400 });
-        }
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const now = new Date().toISOString();
-        const insert = {
-            type,
-            value,
-            group_id,
-            order_position,
-            created_at: now,
-            updated_at: now,
-        };
-
-        const { data, error } = await supabase.from('contact_details').insert([insert]).select().single();
-        if (error) throw error;
-        return NextResponse.json(data, { status: 201 });
-    } catch (e: any) {
-        console.error('POST /api/contact_details error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const body = await request.json();
+    const parsed = CreateContactDetailSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
-}
-
-export async function PATCH(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
-        const body = await request.json();
-
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const update: any = { ...body, updated_at: new Date().toISOString() };
-        const { data, error } = await supabase.from('contact_details').update(update).eq('id', id).select().single();
-        if (error) throw error;
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/contact_details/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
-}
-
-export async function DELETE(request: Request) {
-    try {
-        const url = new URL(request.url);
-        const id = url.pathname.split('/').pop();
-
-        if (!id) {
-            return NextResponse.json({ error: 'Brak ID' }, { status: 400 });
-        }
-
-        const { data, error } = await supabase.from('contact_details').delete().eq('id', id).select().single();
-        if (error) throw error;
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('DELETE /api/contact_details/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+    const created = await ContactService.createDetail({
+      type: parsed.data.type,
+      value: parsed.data.value,
+      group_id: parsed.data.group_id,
+      order_position: parsed.data.order_position,
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    console.error('POST /api/contact_details error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

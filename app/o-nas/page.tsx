@@ -1,12 +1,9 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { getDB } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Users, Award, Shield, Star, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import { createSupabaseClient } from '@/lib/supabase';
 import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { AnimatedSection } from '@/components/ui/animated-section';
 import { AnimatedGroup } from '@/components/ui/animated-group';
@@ -29,46 +26,19 @@ interface TeamMember {
     bio?: string;
 }
 
-export default function AboutPage() {
-    const [pageContent, setPageContent] = useState<PageContent | null>(null);
-    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-    const [loading, setLoading] = useState(true);
+export default async function AboutPage() {
+    const db = getDB();
 
-    useEffect(() => {
-        const fetchPageData = async () => {
-            setLoading(true);
-            try {
-                const supabase = createSupabaseClient();
-                if (!supabase) {
-                    console.warn('Supabase client not initialized for About page.');
-                    setLoading(false);
-                    return;
-                }
+    // Fetch page data on the server
+    const pages = await db.findWhere<PageContent>('pages', { slug: 'o-nas', is_published: true });
+    const pageContent = pages && pages.length > 0 ? pages[0] : null;
 
-                const { data: pageData, error: pageError } = await supabase.from('pages').select('*').eq('slug', 'o-nas').eq('is_published', true).single();
-
-                if (pageError) {
-                    console.error('Error fetching about page content:', pageError);
-                } else {
-                    setPageContent(pageData);
-                }
-
-                const { data: doctorsData, error: doctorsError } = await supabase.from('doctors').select('id, first_name, last_name, specialization, bio').limit(3);
-
-                if (doctorsError) {
-                    console.error('Error fetching team members:', doctorsError);
-                } else {
-                    setTeamMembers(doctorsData || []);
-                }
-            } catch (error) {
-                console.error('Error fetching data for About page:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPageData();
-    }, []);
+    // Fetch team members on the server (just for completeness, though they aren't used in UI directly here?)
+    // In Original Code, doctors were fetched but not rendered. We'll fetch them anyway.
+    const teamMembers = await db.findWhere<TeamMember>('doctors', { is_active: true }, {
+        limit: 3,
+        orderBy: { column: 'order_position', ascending: true }
+    });
 
     const values = [
         {
@@ -93,13 +63,12 @@ export default function AboutPage() {
         },
     ];
 
-    if (loading) {
+    if (!pageContent) {
         return (
             <LayoutWrapper>
                 <div className="min-h-[calc(100vh-10rem)] bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Ładowanie strony O nas...</p>
+                        <p className="text-gray-600">Nie znaleziono strony.</p>
                     </div>
                 </div>
             </LayoutWrapper>

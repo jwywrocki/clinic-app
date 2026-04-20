@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase';
+import { getDB } from '@/lib/db';
 
 // Force static generation
 export const dynamic = 'force-static';
@@ -7,7 +7,7 @@ export const revalidate = 3600; // Revalidate every hour
 
 export async function GET() {
     try {
-        const supabase = createSupabaseClient();
+        const db = getDB();
 
         // Use NEXT_PUBLIC_SITE_URL or fallback to localhost for development
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:4000';
@@ -25,17 +25,15 @@ Disallow: /api/
 # Allow specific paths
 Allow: /api/public/`;
 
-        if (supabase) {
-            try {
-                const { data: setting } = await supabase.from('site_settings').select('value').eq('key', 'robots_txt').single();
+        try {
+            const setting = await db.findOne<any>('site_settings', { key: 'robots_txt' });
 
-                if (setting && setting.value) {
-                    robotsContent = setting.value;
-                }
-            } catch (error) {
-                console.error('Error fetching robots.txt from settings:', error);
-                // Fall back to default content
+            if (setting && setting.value) {
+                robotsContent = setting.value;
             }
+        } catch (error) {
+            console.error('Error fetching robots.txt from settings:', error);
+            // Fall back to default content
         }
 
         return new NextResponse(robotsContent, {

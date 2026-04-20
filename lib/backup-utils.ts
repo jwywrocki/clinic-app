@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { getDB } from '@/lib/db';
 import fs from 'fs/promises';
 import path from 'path';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
@@ -15,6 +11,8 @@ export function formatBytes(bytes: number): string {
 }
 
 export async function createBackupFile(backupId: string, filename: string): Promise<void> {
+    const db = getDB();
+
     try {
         const backupsDir = path.join(process.cwd(), 'backups');
         try {
@@ -25,11 +23,11 @@ export async function createBackupFile(backupId: string, filename: string): Prom
 
         const filePath = path.join(backupsDir, filename);
 
-        console.log('Creating backup using Supabase client...');
+        console.log('Creating backup using DB client...');
 
-        // Create backup content using Supabase client
-        let backupContent = `-- Database backup created by Supabase client on ${new Date().toISOString()}\n`;
-        backupContent += `-- This is a data-only backup, schema should be restored from supabase_clinic.sql\n\n`;
+        // Create backup content
+        let backupContent = `-- Database backup created on ${new Date().toISOString()}\n`;
+        backupContent += `-- This is a data-only backup, schema should be restored from schema file\n\n`;
 
         // Define tables to backup - only include tables that are likely to exist
         const tablesToBackup = [
@@ -37,15 +35,25 @@ export async function createBackupFile(backupId: string, filename: string): Prom
             'roles',
             'permissions',
             'user_has_roles',
+            'user_has_permissions',
             'site_settings',
             'contact_groups',
             'contact_details',
+            'specializations',
             'services',
             'doctors',
+            'doctor_has_specializations',
             'pages',
+            'page_has_specializations',
+            'page_settings',
             'menu_items',
+            'news_category',
             'news',
+            'news_has_category',
             'surveys',
+            'question_has_survey',
+            'option_has_question',
+            'survey_answers',
             'database_backups',
         ];
 
@@ -53,18 +61,7 @@ export async function createBackupFile(backupId: string, filename: string): Prom
             try {
                 console.log(`Backing up table: ${tableName}`);
 
-                // Get all data from the table
-                const { data: tableData, error } = await supabase.from(tableName).select('*');
-
-                if (error) {
-                    // Check if it's a "relation does not exist" error (table doesn't exist)
-                    if (error.message.includes('relation') && error.message.includes('does not exist')) {
-                        console.log(`Table ${tableName} does not exist, skipping...`);
-                    } else {
-                        console.warn(`Warning: Could not backup table ${tableName}:`, error.message);
-                    }
-                    continue;
-                }
+                const tableData = await db.list<any>(tableName);
 
                 if (!tableData || tableData.length === 0) {
                     console.log(`Table ${tableName} is empty, skipping...`);
@@ -107,34 +104,27 @@ export async function createBackupFile(backupId: string, filename: string): Prom
         }
 
         // Update backup record with success
-        const { error: updateError } = await supabase
-            .from('database_backups')
-            .update({
+        try {
+            await db.updateById('database_backups', backupId, {
                 status: 'completed',
                 file_size: stats.size,
                 completed_at: new Date().toISOString(),
-            })
-            .eq('id', backupId);
-
-        if (updateError) {
-            console.error('Error updating backup record:', updateError);
-        } else {
+            });
             console.log(`Backup ${backupId} completed successfully, size: ${formatBytes(stats.size)}`);
+        } catch (updateError) {
+            console.error('Error updating backup record:', updateError);
         }
     } catch (error: any) {
         console.error('Backup creation failed:', error.message);
 
         // Update backup record with failure
-        const { error: updateError } = await supabase
-            .from('database_backups')
-            .update({
+        try {
+            await db.updateById('database_backups', backupId, {
                 status: 'failed',
                 error_message: error.message,
                 completed_at: new Date().toISOString(),
-            })
-            .eq('id', backupId);
-
-        if (updateError) {
+            });
+        } catch (updateError) {
             console.error('Error updating failed backup record:', updateError);
         }
 
@@ -144,10 +134,11 @@ export async function createBackupFile(backupId: string, filename: string): Prom
 
 export async function handleAutoBackup(): Promise<{ success: boolean; message: string; backup_id?: string }> {
     try {
-        const { data: settings } = await supabase.from('site_settings').select('key, value').in('key', ['db_backup_enabled', 'db_backup_frequency']);
+        const db = getDB();
 
+        const settings = await db.list<any>('site_settings');
         const settingsMap =
-            settings?.reduce((acc, setting) => {
+            settings?.reduce((acc: Record<string, string>, setting: any) => {
                 acc[setting.key] = setting.value;
                 return acc;
             }, {} as Record<string, string>) || {};
@@ -160,21 +151,13 @@ export async function handleAutoBackup(): Promise<{ success: boolean; message: s
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `auto-backup-${timestamp}.sql`;
 
-        const { data: backup, error: createError } = await supabase
-            .from('database_backups')
-            .insert({
-                id: backupId,
-                filename,
-                file_path: `/backups/${filename}`,
-                backup_type: 'automatic',
-                status: 'in_progress',
-            })
-            .select('id,filename,status,created_at')
-            .single();
-
-        if (createError) {
-            throw new Error(`Error creating backup record: ${createError.message}`);
-        }
+        await db.insert('database_backups', {
+            id: backupId,
+            filename,
+            file_path: `/backups/${filename}`,
+            backup_type: 'automatic',
+            status: 'in_progress',
+        });
 
         await createBackupFile(backupId, filename);
 
@@ -191,13 +174,16 @@ export async function handleAutoBackup(): Promise<{ success: boolean; message: s
 
 export async function handleBackupCleanup(): Promise<{ success: boolean; message: string; cleaned_count?: number }> {
     try {
-        const { data: settings } = await supabase.from('site_settings').select('key, value').eq('key', 'db_backup_retention_days').single();
+        const db = getDB();
 
-        const retentionDays = parseInt(settings?.value || '30');
+        const retentionSetting = await db.findOne<any>('site_settings', { key: 'db_backup_retention_days' });
+        const retentionDays = parseInt(retentionSetting?.value || '30');
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-        const { data: oldBackups } = await supabase.from('database_backups').select('id, filename, created_at').lt('created_at', cutoffDate.toISOString()).eq('status', 'completed');
+        // Fetch completed backups and filter by date client-side
+        const allBackups = await db.findWhere<any>('database_backups', { status: 'completed' });
+        const oldBackups = allBackups.filter((b: any) => new Date(b.created_at) < cutoffDate);
 
         if (!oldBackups || oldBackups.length === 0) {
             return { success: true, message: 'Brak starych kopii zapasowych do usunięcia', cleaned_count: 0 };
@@ -218,11 +204,11 @@ export async function handleBackupCleanup(): Promise<{ success: boolean; message
                 }
 
                 // Remove database record
-                const { error: deleteError } = await supabase.from('database_backups').delete().eq('id', backup.id);
-                if (deleteError) {
-                    console.error(`Error deleting backup record ${backup.id}:`, deleteError);
-                } else {
+                try {
+                    await db.deleteById('database_backups', backup.id);
                     cleanedCount++;
+                } catch (deleteError) {
+                    console.error(`Error deleting backup record ${backup.id}:`, deleteError);
                 }
             } catch (error) {
                 console.error(`Error cleaning backup ${backup.id}:`, error);

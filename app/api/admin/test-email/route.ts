@@ -8,45 +8,56 @@ import nodemailer from 'nodemailer';
 import { decryptSensitiveData, isEncrypted } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { settings } = body;
+  // Lazy import to avoid circular dependency
+  const { requireRole, isAuthError } = await import('@/lib/auth');
+  const auth = await requireRole(request, 'admin');
+  if (isAuthError(auth)) return auth;
 
-        if (!settings?.email_smtp_host || !settings?.email_smtp_port || !settings?.email_smtp_user || !settings?.email_smtp_password || !settings?.email_from_address) {
-            return NextResponse.json({ error: 'Brak wymaganych ustawień SMTP' }, { status: 400 });
-        }
+  try {
+    const body = await request.json();
+    const { settings } = body;
 
-        // Decrypt password if encrypted
-        let smtpPassword = settings.email_smtp_password;
-        if (isEncrypted(smtpPassword)) {
-            try {
-                smtpPassword = decryptSensitiveData(smtpPassword);
-            } catch (error) {
-                console.error('Failed to decrypt SMTP password:', error);
-                return NextResponse.json({ error: 'Błąd deszyfrowania hasła SMTP' }, { status: 400 });
-            }
-        }
+    if (
+      !settings?.email_smtp_host ||
+      !settings?.email_smtp_port ||
+      !settings?.email_smtp_user ||
+      !settings?.email_smtp_password ||
+      !settings?.email_from_address
+    ) {
+      return NextResponse.json({ error: 'Brak wymaganych ustawień SMTP' }, { status: 400 });
+    }
 
-        const transporter = nodemailer.createTransport({
-            host: settings.email_smtp_host,
-            port: parseInt(settings.email_smtp_port),
-            secure: parseInt(settings.email_smtp_port) === 465,
-            auth: {
-                user: settings.email_smtp_user,
-                pass: smtpPassword,
-            },
-            tls: {
-                rejectUnauthorized: settings.email_use_tls === 'true',
-            },
-        });
+    // Decrypt password if encrypted
+    let smtpPassword = settings.email_smtp_password;
+    if (isEncrypted(smtpPassword)) {
+      try {
+        smtpPassword = decryptSensitiveData(smtpPassword);
+      } catch (error) {
+        console.error('Failed to decrypt SMTP password:', error);
+        return NextResponse.json({ error: 'Błąd deszyfrowania hasła SMTP' }, { status: 400 });
+      }
+    }
 
-        await transporter.verify();
+    const transporter = nodemailer.createTransport({
+      host: settings.email_smtp_host,
+      port: parseInt(settings.email_smtp_port),
+      secure: parseInt(settings.email_smtp_port) === 465,
+      auth: {
+        user: settings.email_smtp_user,
+        pass: smtpPassword,
+      },
+      tls: {
+        rejectUnauthorized: settings.email_use_tls === 'true',
+      },
+    });
 
-        const mailOptions = {
-            from: `${settings.email_from_name || 'System'} <${settings.email_from_address}>`,
-            to: settings.email_from_address,
-            subject: 'Test konfiguracji email - Klinika',
-            html: `
+    await transporter.verify();
+
+    const mailOptions = {
+      from: `${settings.email_from_name || 'System'} <${settings.email_from_address}>`,
+      to: settings.email_from_address,
+      subject: 'Test konfiguracji email - Klinika',
+      html: `
                 <h2>Test konfiguracji email</h2>
                 <p>Ta wiadomość została wysłana w celu przetestowania konfiguracji SMTP.</p>
                 <p><strong>Data:</strong> ${new Date().toLocaleString('pl-PL')}</p>
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
                     Jeśli otrzymałeś tę wiadomość, konfiguracja email działa poprawnie.
                 </p>
             `,
-            text: `
+      text: `
 Test konfiguracji email
 
 Ta wiadomość została wysłana w celu przetestowania konfiguracji SMTP.
@@ -70,38 +81,36 @@ TLS: ${settings.email_use_tls === 'true' ? 'Włączony' : 'Wyłączony'}
 
 Jeśli otrzymałeś tę wiadomość, konfiguracja email działa poprawnie.
             `,
-        };
+    };
 
-        const info = await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
 
-        return NextResponse.json({
-            success: true,
-            message: 'Wiadomość testowa została wysłana pomyślnie',
-            messageId: info.messageId,
-        });
-    } catch (error: any) {
-        console.error('Error sending test email:', error);
+    return NextResponse.json({
+      success: true,
+      message: 'Wiadomość testowa została wysłana pomyślnie',
+      messageId: info.messageId,
+    });
+  } catch (error: any) {
+    console.error('Error sending test email:', error);
 
-        let errorMessage = 'Błąd podczas wysyłania wiadomości testowej';
+    let errorMessage = 'Błąd podczas wysyłania wiadomości testowej';
 
-        if (error.code === 'EAUTH') {
-            errorMessage = 'Błąd autoryzacji - sprawdź dane logowania SMTP';
-        } else if (error.code === 'ECONNREFUSED') {
-            errorMessage = 'Odmowa połączenia - sprawdź adres serwera i port';
-        } else if (error.code === 'ETIMEDOUT') {
-            errorMessage = 'Przekroczono czas oczekiwania - sprawdź połączenie sieciowe';
-        } else if (error.code === 'ENOTFOUND') {
-            errorMessage = 'Nie znaleziono serwera SMTP - sprawdź adres hosta';
-        } else if (error.message) {
-            errorMessage = `Błąd SMTP: ${error.message}`;
-        }
-
-        return NextResponse.json(
-            {
-                error: errorMessage,
-                details: error.code || 'UNKNOWN_ERROR',
-            },
-            { status: 500 }
-        );
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Błąd autoryzacji - sprawdź dane logowania SMTP';
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Odmowa połączenia - sprawdź adres serwera i port';
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = 'Przekroczono czas oczekiwania - sprawdź połączenie sieciowe';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = 'Nie znaleziono serwera SMTP - sprawdź adres hosta';
     }
+
+    return NextResponse.json(
+      {
+        error: errorMessage,
+        details: error.code || 'UNKNOWN_ERROR',
+      },
+      { status: 500 }
+    );
+  }
 }

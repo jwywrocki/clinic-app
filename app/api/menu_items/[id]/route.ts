@@ -1,61 +1,51 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { MenusService } from '@/lib/services/menus';
+import { UpdateMenuItemSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/menu_items/[id]
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
-
-        const { data, error } = await supabase.from('menu_items').select('*').eq('id', id).single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/menu_items/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const { id } = await params;
+    const data = await MenusService.getById(id);
+    if (!data) {
+      return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
     }
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error('GET /api/menu_items/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// PATCH /api/menu_items/[id]
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
-        const body = await request.json();
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const now = new Date().toISOString();
-        const updateData = {
-            ...body,
-            url: body.url || null,
-            parent_id: body.parent_id || null, // Convert empty string or undefined to null
-            updated_at: now,
-        };
-
-        const { data, error } = await supabase.from('menu_items').update(updateData).eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/menu_items/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const parsed = UpdateMenuItemSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
+    const data = await MenusService.update(id, parsed.data);
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error('PATCH /api/menu_items/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// DELETE /api/menu_items/[id]
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const { error } = await supabase.from('menu_items').delete().eq('id', id);
-
-        if (error) throw error;
-
-        return NextResponse.json({ message: 'Menu item deleted successfully' });
-    } catch (e: any) {
-        console.error('DELETE /api/menu_items/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+  try {
+    const { id } = await params;
+    await MenusService.delete(id);
+    return NextResponse.json({ message: 'Menu item deleted successfully' });
+  } catch (e) {
+    console.error('DELETE /api/menu_items/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

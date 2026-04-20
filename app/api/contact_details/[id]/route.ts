@@ -1,64 +1,55 @@
-// app/api/contact_details/[id]/route.ts
+import { type NextRequest, NextResponse } from 'next/server';
+import { ContactService } from '@/lib/services/contact';
+import { UpdateContactDetailSchema, formatZodError } from '@/lib/schemas';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/contact_details/[id]
-export async function GET(request: Request, { params: initialParams }: { params: Promise<{ id: string }> }) {
-    try {
-        const params = await initialParams; // Await the params object
-        const { id } = params;
-
-        const { data, error } = await supabase.from('contact_details').select('*').eq('id', id).single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/contact_details/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const data = await ContactService.getDetailById(id);
+    if (!data) {
+      return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
     }
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error('GET /api/contact_details/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// PATCH /api/contact_details/[id]
-export async function PATCH(request: Request, { params: initialParams }: { params: Promise<{ id: string }> }) {
-    try {
-        const params = await initialParams; // Await the params object
-        const { id } = params;
-        const body = await request.json();
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const now = new Date().toISOString();
-        const updateData = {
-            ...body, // if group_id is in body, it will be included here
-            updated_at: now,
-        };
-
-        const { data, error } = await supabase.from('contact_details').update(updateData).eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/contact_details/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const parsed = UpdateContactDetailSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error.issues) }, { status: 400 });
     }
+    const updateData = { ...parsed.data };
+    const data = await ContactService.updateDetail(id, updateData);
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error('PATCH /api/contact_details/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// DELETE /api/contact_details/[id]
-export async function DELETE(request: Request, { params: initialParams }: { params: Promise<{ id: string }> }) {
-    try {
-        const params = await initialParams; // Await the params object
-        const { id } = params;
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const { error } = await supabase.from('contact_details').delete().eq('id', id);
-
-        if (error) throw error;
-
-        return NextResponse.json({ message: 'Contact detail deleted successfully' });
-    } catch (e: any) {
-        console.error('DELETE /api/contact_details/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+  try {
+    const { id } = await params;
+    await ContactService.deleteDetail(id);
+    return NextResponse.json({ message: 'Contact detail deleted successfully' });
+  } catch (e) {
+    console.error('DELETE /api/contact_details/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }

@@ -1,61 +1,54 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
+import { requireAuth, isAuthError } from '@/lib/auth';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-// GET /api/doctors/[id]
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
-
-        const { data, error } = await supabase.from('doctors').select('*').eq('id', id).single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('GET /api/doctors/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params;
+    const db = getDB();
+    const data = await db.getById('doctors', id);
+    return NextResponse.json(data);
+  } catch (e: any) {
+    console.error('GET /api/doctors/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// PATCH /api/doctors/[id]
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
-        const body = await request.json();
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const now = new Date().toISOString();
-        const updateData = {
-            ...body,
-            ...(body.description !== undefined ? { bio: body.description } : {}),
-            updated_at: now,
-        };
-        if (updateData.description !== undefined) delete updateData.description;
+  try {
+    const { id } = params;
+    const body = await request.json();
 
-        const { data, error } = await supabase.from('doctors').update(updateData).eq('id', id).select().single();
-
-        if (error) throw error;
-
-        return NextResponse.json(data);
-    } catch (e: any) {
-        console.error('PATCH /api/doctors/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+    const now = new Date().toISOString();
+    const updateData = {
+      ...body,
+      ...(body.description !== undefined ? { bio: body.description } : {}),
+      updated_at: now,
+    };
+    if (updateData.description !== undefined) delete updateData.description;
+    const db = getDB();
+    const data = await db.updateById('doctors', id, updateData);
+    return NextResponse.json(data);
+  } catch (e: any) {
+    console.error('PATCH /api/doctors/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
 
-// DELETE /api/doctors/[id]
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const { id } = await params;
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
-        const { error } = await supabase.from('doctors').delete().eq('id', id);
-
-        if (error) throw error;
-
-        return NextResponse.json({ message: 'Doctor deleted successfully' });
-    } catch (e: any) {
-        console.error('DELETE /api/doctors/:id error', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
-    }
+  try {
+    const { id } = params;
+    const db = getDB();
+    await db.deleteById('doctors', id);
+    return NextResponse.json({ message: 'Doctor deleted successfully' });
+  } catch (e: any) {
+    console.error('DELETE /api/doctors/:id error', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
+  }
 }
