@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "PORT=4000 next dev",
         "build": "next build",
-        "start": "PORT=4000 next start",
+        "start": "next start -p ${PORT:-4000}",
+        "start:cyberfolks": "next start",
         "lint": "next lint",
         "lint:fix": "next lint --fix",
         "type-check": "tsc --noEmit",

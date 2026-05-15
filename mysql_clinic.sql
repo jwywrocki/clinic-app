@@ -1,0 +1,378 @@
+-- USERS
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login DATETIME,
+    created_by VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- PERMISSIONS
+CREATE TABLE IF NOT EXISTS permissions (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(255) UNIQUE NOT NULL
+);
+
+-- USER_PERMISSIONS
+CREATE TABLE IF NOT EXISTS user_has_permissions (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id VARCHAR(36),
+    permission_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_permission (user_id, permission_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+);
+
+-- ROLES
+CREATE TABLE IF NOT EXISTS roles (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- USER_ROLES
+CREATE TABLE IF NOT EXISTS user_has_roles (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id VARCHAR(36),
+    role_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_role (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+);
+
+-- SURVEYS (Defined early due to dependencies)
+CREATE TABLE IF NOT EXISTS surveys (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    is_published BOOLEAN DEFAULT FALSE,
+    created_by VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- PAGES
+CREATE TABLE IF NOT EXISTS pages (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    meta_description TEXT,
+    is_published BOOLEAN DEFAULT FALSE,
+    created_by VARCHAR(36),
+    survey_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (survey_id) REFERENCES surveys(id)
+);
+
+-- MENU ITEMS
+CREATE TABLE IF NOT EXISTS menu_items (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    url VARCHAR(255),
+    order_position INT NOT NULL,
+    parent_id VARCHAR(36),
+    is_published BOOLEAN DEFAULT FALSE,
+    created_by VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES menu_items(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- SPECIALIZATIONS
+CREATE TABLE IF NOT EXISTS specializations (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- DOCTORS
+CREATE TABLE IF NOT EXISTS doctors (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    specialization VARCHAR(36) NOT NULL,
+    bio TEXT,
+    schedule VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    image_url TEXT,
+    order_position INT NOT NULL DEFAULT 1,
+    page_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (specialization) REFERENCES specializations(id),
+    FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
+);
+
+-- DOCTOR HAS SPECIALIZATIONS (many-to-many)
+CREATE TABLE IF NOT EXISTS doctor_has_specializations (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    doctor_id VARCHAR(36) NOT NULL,
+    specialization_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_doctor_specialization (doctor_id, specialization_id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+    FOREIGN KEY (specialization_id) REFERENCES specializations(id) ON DELETE CASCADE
+);
+
+-- PAGE HAS SPECIALIZATIONS (filters doctors shown on page)
+CREATE TABLE IF NOT EXISTS page_has_specializations (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    page_id VARCHAR(36) NOT NULL,
+    specialization_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_page_specialization (page_id, specialization_id),
+    FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+    FOREIGN KEY (specialization_id) REFERENCES specializations(id) ON DELETE CASCADE
+);
+
+-- COMPATIBILITY MIGRATION FOR EXISTING DATA
+INSERT INTO
+    specializations (id, name, description, created_at, updated_at)
+SELECT
+    UUID(),
+    d.specialization,
+    NULL,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM
+    doctors d
+WHERE
+    d.specialization IS NOT NULL
+    AND d.specialization <> ''
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            specializations s
+        WHERE
+            s.name = d.specialization
+            OR s.id = d.specialization
+    );
+
+UPDATE
+    doctors d
+    JOIN specializations s ON s.name = d.specialization
+SET
+    d.specialization = s.id
+WHERE
+    d.specialization IS NOT NULL
+    AND d.specialization <> ''
+    AND d.specialization NOT IN (
+        SELECT
+            id
+        FROM
+            specializations
+    );
+
+INSERT INTO
+    doctor_has_specializations (
+        id,
+        doctor_id,
+        specialization_id,
+        created_at,
+        updated_at
+    )
+SELECT
+    UUID(),
+    d.id,
+    d.specialization,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM
+    doctors d
+WHERE
+    d.specialization IS NOT NULL
+    AND d.specialization <> ''
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            doctor_has_specializations dhs
+        WHERE
+            dhs.doctor_id = d.id
+            AND dhs.specialization_id = d.specialization
+    );
+
+ALTER TABLE
+    pages DROP COLUMN IF EXISTS doctors_category;
+
+ALTER TABLE
+    doctors DROP COLUMN IF EXISTS menu_category;
+
+-- NEWS CATEGORY
+CREATE TABLE IF NOT EXISTS news_category (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- NEWS
+CREATE TABLE IF NOT EXISTS news (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    image_url TEXT,
+    excerpt TEXT,
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    published_at DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- NEWS HAS CATEGORY
+CREATE TABLE IF NOT EXISTS news_has_category (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    news_id VARCHAR(36) NOT NULL,
+    category_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_news_category (news_id, category_id),
+    FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES news_category(id) ON DELETE CASCADE
+);
+
+-- PAGE SETTINGS
+CREATE TABLE IF NOT EXISTS page_settings (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    subtitle VARCHAR(255),
+    hero_image TEXT,
+    survey_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE
+    SET
+        NULL
+);
+
+-- SERVICES
+CREATE TABLE IF NOT EXISTS services (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    is_published BOOLEAN DEFAULT FALSE,
+    icon VARCHAR(255) NOT NULL,
+    order_position INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- CONTACT GROUPS
+CREATE TABLE IF NOT EXISTS contact_groups (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    label VARCHAR(255) NOT NULL,
+    in_hero BOOLEAN NOT NULL DEFAULT FALSE,
+    in_footer BOOLEAN NOT NULL DEFAULT FALSE,
+    order_position INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- CONTACT DETAILS
+CREATE TABLE IF NOT EXISTS contact_details (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    group_id VARCHAR(36),
+    type ENUM(
+        'phone',
+        'email',
+        'address',
+        'hours',
+        'emergency_contact'
+    ) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    order_position INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES contact_groups(id) ON DELETE
+    SET
+        NULL
+);
+
+-- QUESTIONS
+CREATE TABLE IF NOT EXISTS question_has_survey (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    survey_id VARCHAR(36) NOT NULL,
+    text TEXT NOT NULL,
+    type ENUM('single', 'multi', 'text') NOT NULL,
+    order_no INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE
+);
+
+-- QUESTION OPTIONS
+CREATE TABLE IF NOT EXISTS option_has_question (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    question_id VARCHAR(36) NOT NULL,
+    text VARCHAR(255) NOT NULL,
+    order_no INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (question_id) REFERENCES question_has_survey(id) ON DELETE CASCADE
+);
+
+-- SURVEY ANSWERS
+CREATE TABLE IF NOT EXISTS survey_answers (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    survey_id VARCHAR(36) NOT NULL,
+    question_id VARCHAR(36) NOT NULL,
+    option_id VARCHAR(36),
+    answer_text TEXT,
+    response_id VARCHAR(36) NOT NULL,
+    submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES question_has_survey(id),
+    FOREIGN KEY (option_id) REFERENCES option_has_question(id)
+);
+
+-- SITE SETTINGS
+CREATE TABLE IF NOT EXISTS site_settings (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    `key` VARCHAR(255) UNIQUE NOT NULL,
+    value TEXT,
+    description TEXT,
+    created_by VARCHAR(36),
+    updated_by VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE
+    SET
+        NULL,
+        FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE
+    SET
+        NULL
+);
+
+-- DATABASE BACKUPS
+CREATE TABLE IF NOT EXISTS database_backups (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL DEFAULT 0,
+    backup_type VARCHAR(255) NOT NULL DEFAULT 'manual',
+    status VARCHAR(255) NOT NULL DEFAULT 'in_progress',
+    error_message TEXT,
+    created_by VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE
+    SET
+        NULL
+);

@@ -26,7 +26,7 @@ export function Header() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/settings?key=site_title')
+    fetch('/api/auth/status')
       .then(res => setIsConnected(res.ok))
       .catch(() => setIsConnected(false));
   }, []);

@@ -55,7 +55,6 @@ create table if not exists pages (
     is_published boolean default false,
     created_by uuid references users (id),
     survey_id uuid references surveys (id),
-    doctors_category text,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
 );
@@ -73,21 +72,49 @@ create table if not exists menu_items (
     updated_at timestamptz default now ()
 );
 
+-- SPECIALIZATIONS
+create table if not exists specializations (
+    id uuid primary key default gen_random_uuid (),
+    name text not null unique,
+    description text,
+    created_at timestamptz default now (),
+    updated_at timestamptz default now ()
+);
+
 -- DOCTORS
 create table if not exists doctors (
     id uuid primary key default gen_random_uuid (),
     first_name text not null,
     last_name text not null,
-    specialization text not null,
+    specialization uuid not null references specializations (id),
     bio text,
     schedule text not null,
     is_active boolean default true,
     image_url text,
     order_position integer not null default 1,
-    menu_category text not null default 'lekarze',
     page_id uuid references pages (id) on delete cascade,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
+);
+
+-- DOCTOR HAS SPECIALIZATIONS (many-to-many)
+create table if not exists doctor_has_specializations (
+    id uuid primary key default gen_random_uuid (),
+    doctor_id uuid not null references doctors (id) on delete cascade,
+    specialization_id uuid not null references specializations (id) on delete cascade,
+    created_at timestamptz default now (),
+    updated_at timestamptz default now (),
+    constraint unique_doctor_specialization unique (doctor_id, specialization_id)
+);
+
+-- PAGE HAS SPECIALIZATIONS (filters doctors shown on page)
+create table if not exists page_has_specializations (
+    id uuid primary key default gen_random_uuid (),
+    page_id uuid not null references pages (id) on delete cascade,
+    specialization_id uuid not null references specializations (id) on delete cascade,
+    created_at timestamptz default now (),
+    updated_at timestamptz default now (),
+    constraint unique_page_specialization unique (page_id, specialization_id)
 );
 
 -- NEWS
@@ -95,6 +122,8 @@ create table if not exists news (
     id uuid primary key default gen_random_uuid (),
     title text not null,
     content text not null,
+    image_url text,
+    excerpt text,
     is_published boolean not null default false,
     published_at timestamptz,
     created_at timestamptz default now (),
@@ -141,6 +170,7 @@ create table if not exists services (
     description text not null,
     is_published boolean default false,
     icon text not null,
+    order_position integer default 0,
     created_at timestamptz default now (),
     updated_at timestamptz default now ()
 );

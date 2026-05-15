@@ -294,12 +294,6 @@ export function Footer({ menuItems = [] }: FooterProps) {
                 >
                   Polityka prywatności
                 </Link>
-                <Link
-                  href="/admin"
-                  className="text-blue-400 hover:text-blue-300 transition-colors text-sm px-3 py-1"
-                >
-                  Panel administracyjny
-                </Link>
               </div>
             </div>
           </div>
