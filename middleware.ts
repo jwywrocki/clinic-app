@@ -43,7 +43,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
     "img-src 'self' data: blob: https:",
     "font-src 'self'",
     "connect-src 'self'",
-    "frame-src https://www.google.com/maps/ https://maps.google.com/",
+    'frame-src https://www.google.com/maps/ https://maps.google.com/',
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
