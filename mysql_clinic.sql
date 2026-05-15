@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS doctors (
     last_name VARCHAR(255) NOT NULL,
     specialization VARCHAR(36) NOT NULL,
     bio TEXT,
-    schedule VARCHAR(255) NOT NULL,
+    schedule TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     image_url TEXT,
     order_position INT NOT NULL DEFAULT 1,
@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS contact_details (
         'hours',
         'emergency_contact'
     ) NOT NULL,
-    value VARCHAR(255) NOT NULL,
+    value TEXT NOT NULL,
     order_position INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

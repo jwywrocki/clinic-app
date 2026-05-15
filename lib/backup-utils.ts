@@ -1,4 +1,5 @@
 import { getDB } from '@/lib/db';
+import { resolveProvider } from '@/lib/db/env';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -25,10 +26,48 @@ export async function createBackupFile(backupId: string, filename: string): Prom
 
     console.log('Creating backup using DB client...');
 
+    const provider = resolveProvider();
+    const isMysql = provider === 'mysql';
+
     // Create backup content
     let backupContent = `-- Database backup created on ${new Date().toISOString()}\n`;
-    backupContent += `-- This is a data-only backup, schema should be restored from schema file\n\n`;
-    backupContent += `SET FOREIGN_KEY_CHECKS = 0;\n\n`;
+    backupContent += `-- This is a data-only backup, schema should be restored from schema file\n`;
+    backupContent += `-- Provider: ${provider}\n\n`;
+
+    if (isMysql) {
+      backupContent += `SET FOREIGN_KEY_CHECKS = 0;\n\n`;
+    }
+
+    // Serialise a single cell value to SQL literal
+    const serializeValue = (value: unknown): string => {
+      if (value === null || value === undefined) return 'NULL';
+      if (typeof value === 'boolean') {
+        return isMysql ? (value ? '1' : '0') : value ? 'true' : 'false';
+      }
+      if (value instanceof Date) {
+        if (isMysql) {
+          const iso = value.toISOString();
+          return `'${iso.replace(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}(?:\.\d+)?).*$/, '$1 $2')}'`;
+        }
+        return `'${value.toISOString()}'`;
+      }
+      if (typeof value === 'string') {
+        const escaped = value.replace(/'/g, "''");
+        if (isMysql) {
+          // Convert ISO 8601 datetime to MySQL format
+          const mysql = escaped.replace(
+            /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}(?:\.\d+)?)(?:[+-]\d{2}:\d{2}|Z)?$/,
+            '$1 $2'
+          );
+          return `'${mysql}'`;
+        }
+        return `'${escaped}'`;
+      }
+      return `'${value}'`;
+    };
+
+    // Quote a column/table identifier
+    const quoteIdent = (name: string): string => (isMysql ? `\`${name}\`` : `"${name}"`);
 
     // Define tables to backup - only include tables that are likely to exist
     const tablesToBackup = [
@@ -71,21 +110,16 @@ export async function createBackupFile(backupId: string, filename: string): Prom
 
         // Add table section to backup
         backupContent += `-- Data for table ${tableName}\n`;
-        backupContent += `DELETE FROM ${tableName};\n`;
+        backupContent += isMysql
+          ? `DELETE FROM ${tableName};\n`
+          : `TRUNCATE TABLE ${tableName} CASCADE;\n`;
 
         // Generate INSERT statements
         for (const row of tableData) {
           const columns = Object.keys(row);
-          const values = columns.map(col => {
-            const value = row[col];
-            if (value === null) return 'NULL';
-            if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
-            if (typeof value === 'boolean') return value ? '1' : '0';
-            if (value instanceof Date) return `'${value.toISOString()}'`;
-            return `'${value}'`;
-          });
+          const values = columns.map(col => serializeValue(row[col]));
 
-          backupContent += `INSERT INTO ${tableName} (${columns.map(col => `\`${col}\``).join(', ')}) VALUES (${values.join(', ')});\n`;
+          backupContent += `INSERT INTO ${tableName} (${columns.map(quoteIdent).join(', ')}) VALUES (${values.join(', ')});\n`;
         }
 
         backupContent += '\n';
@@ -94,7 +128,9 @@ export async function createBackupFile(backupId: string, filename: string): Prom
       }
     }
 
-    backupContent += `SET FOREIGN_KEY_CHECKS = 1;\n\n`;
+    if (isMysql) {
+      backupContent += `SET FOREIGN_KEY_CHECKS = 1;\n\n`;
+    }
 
     // Write backup file
     await fs.writeFile(filePath, backupContent, 'utf8');
