@@ -243,7 +243,7 @@ export default async function ContactPage() {
         {/* Google Maps Section */}
         {googleMapsUrl && (
           <AnimatedSection animation="fadeInUp" className="bg-gray-50">
-            <section className="pt-16 pb-8">
+            <section className="pt-16">
               <div className="container mx-auto px-4 mb-8">
                 <div className="text-center">
                   <h2 className="text-3xl font-bold text-gray-900 mb-4">Znajdź nas</h2>
