@@ -6,7 +6,9 @@ const nextConfig = {
     eslint: {
         // Lint only source directories — skip backups/, logs/, public/
         dirs: ['app', 'components', 'hooks', 'lib'],
-        ignoreDuringBuilds: false,
+        // devDependencies (ESLint plugins) may not be installed in production;
+        // lint locally / in CI instead of during next build.
+        ignoreDuringBuilds: true,
     },
     typescript: {
         ignoreBuildErrors: false,
@@ -18,7 +20,7 @@ const nextConfig = {
         ],
         unoptimized: true,
     },
-    webpack: (config, { isServer }) => {
+    webpack: (config, { isServer, nextRuntime }) => {
         if (!isServer) {
             // Provide empty shims for Node.js built-ins when building client bundles.
             // This prevents `pg` / `mysql2` from crashing the browser bundle even though
@@ -30,6 +32,15 @@ const nextConfig = {
                 tls: false,
                 dns: false,
                 child_process: false,
+            };
+        }
+        if (nextRuntime === 'edge') {
+            // jose uses CompressionStream/DecompressionStream (JWE compression) which are
+            // not available in the Edge Runtime. next-auth only uses JWT (no compression),
+            // so it is safe to stub out the deflate module for Edge bundles.
+            config.resolve.alias = {
+                ...config.resolve.alias,
+                'jose/dist/webapi/lib/deflate': false,
             };
         }
         return config;

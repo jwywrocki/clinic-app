@@ -1,53 +1,57 @@
 import { getDB } from '@/lib/db';
+import { unstable_cache } from 'next/cache';
 
 interface SiteSettings {
     [key: string]: string;
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
-    try {
-        const db = getDB();
+const SITE_SETTINGS_KEYS = [
+    'site_title',
+    'site_description',
+    'site_keywords',
+    'site_author',
+    'meta_viewport',
+    'meta_language',
+    'meta_charset',
+    'canonical_url',
+    'favicon_url',
+    'robots_txt',
+    'sitemap_url',
+    'schema_type',
+    'schema_name',
+    'schema_description',
+    'schema_address',
+    'schema_phone',
+    'schema_email',
+    'schema_opening_hours',
+    'structured_data_enabled',
+    'h1_title',
+    'meta_title_template',
+    'breadcrumb_enabled',
+];
 
-        const settings = await db.list<any>('site_settings');
-
-        const relevantKeys = [
-            'site_title',
-            'site_description',
-            'site_keywords',
-            'site_author',
-            'meta_viewport',
-            'meta_language',
-            'meta_charset',
-            'canonical_url',
-            'favicon_url',
-            'robots_txt',
-            'sitemap_url',
-            'schema_type',
-            'schema_name',
-            'schema_description',
-            'schema_address',
-            'schema_phone',
-            'schema_email',
-            'schema_opening_hours',
-            'structured_data_enabled',
-            'h1_title',
-            'meta_title_template',
-            'breadcrumb_enabled',
-        ];
-
-        const settingsObj: SiteSettings = {};
-        settings?.forEach((setting: any) => {
-            if (relevantKeys.includes(setting.key)) {
-                settingsObj[setting.key] = setting.value || '';
-            }
-        });
-
-        return settingsObj;
-    } catch (error) {
-        console.error('Error in getSiteSettings:', error);
-        return {};
-    }
-}
+// Cached to avoid hitting the DB on every SSG page during `next build`.
+// Revalidated every 60 s at runtime; also invalidated via revalidateTag('site-settings').
+export const getSiteSettings = unstable_cache(
+    async (): Promise<SiteSettings> => {
+        try {
+            const db = getDB();
+            const settings = await db.list<any>('site_settings');
+            const settingsObj: SiteSettings = {};
+            settings?.forEach((setting: any) => {
+                if (SITE_SETTINGS_KEYS.includes(setting.key)) {
+                    settingsObj[setting.key] = setting.value || '';
+                }
+            });
+            return settingsObj;
+        } catch (error) {
+            console.error('Error in getSiteSettings:', error);
+            return {};
+        }
+    },
+    ['site-settings'],
+    { revalidate: 60, tags: ['site-settings'] },
+);
 
 export function generateSchemaOrgStructuredData(settings: SiteSettings): object | null {
     if (settings.structured_data_enabled !== 'true' || !settings.schema_name || !settings.schema_type) {

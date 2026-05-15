@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SettingService } from '@/lib/services/settings';
 import { requireRole, isAuthError } from '@/lib/auth';
+import { revalidateTag } from 'next/cache';
 
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, 'admin');
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const results = await SettingService.bulkUpsert(settings, userId);
+    revalidateTag('site-settings');
 
     return NextResponse.json({
       success: true,
@@ -61,6 +63,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const result = await SettingService.upsert(key, value, userId);
+    revalidateTag('site-settings');
 
     return NextResponse.json(result);
   } catch (error) {
