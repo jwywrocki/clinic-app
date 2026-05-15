@@ -10,13 +10,13 @@ export class NewsService {
 
   static async getPublished(): Promise<NewsItem[]> {
     const db = getDB();
-    const now = new Date().toISOString();
+    const now = new Date();
     const allPublished = await db.findWhere<NewsItem>(
       'news',
       { is_published: true },
       { orderBy: { column: 'published_at', ascending: false } }
     );
-    return allPublished.filter(n => !n.published_at || n.published_at <= now);
+    return allPublished.filter(n => !n.published_at || new Date(n.published_at) <= now);
   }
 
   static async getById(id: string): Promise<NewsItem | null> {

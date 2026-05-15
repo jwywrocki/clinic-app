@@ -53,6 +53,17 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
   const q = (sql: string, params?: unknown[]) =>
     (exec as any).query(sql, params) as Promise<[unknown[], unknown[]]>;
 
+  /** Convert ISO 8601 datetime strings to MySQL-compatible format. */
+  function sanitizeParam(value: unknown): unknown {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+      return value
+        .replace('T', ' ')
+        .replace(/\.\d+Z?$/, '')
+        .replace(/Z$/, '');
+    }
+    return value;
+  }
+
   function buildWhereClause(filters: Record<string, unknown>): {
     clause: string;
     values: unknown[];
@@ -60,7 +71,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
     const keys = Object.keys(filters);
     if (keys.length === 0) return { clause: '', values: [] };
     const parts = keys.map(k => `\`${k}\` = ?`);
-    const values = keys.map(k => filters[k]);
+    const values = keys.map(k => sanitizeParam(filters[k]));
     return { clause: ' WHERE ' + parts.join(' AND '), values };
   }
 
@@ -88,7 +99,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
       if (keys.length === 0) throw new Error('No fields to insert');
       const cols = keys.map(k => `\`${k}\``).join(', ');
       const placeholders = keys.map(() => `?`).join(', ');
-      const values = keys.map(k => (data as Record<string, unknown>)[k]);
+      const values = keys.map(k => sanitizeParam((data as Record<string, unknown>)[k]));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [result] = (await q(
         `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders})`,
@@ -112,7 +123,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
       const keys = Object.keys(update);
       if (keys.length === 0) throw new Error('No fields to update');
       const sets = keys.map(k => `\`${k}\` = ?`).join(', ');
-      const values = keys.map(k => (update as Record<string, unknown>)[k]);
+      const values = keys.map(k => sanitizeParam((update as Record<string, unknown>)[k]));
       await q(`UPDATE \`${table}\` SET ${sets} WHERE id = ?`, [...values, id]);
       const [after] = await q(`SELECT * FROM \`${table}\` WHERE id = ? LIMIT 1`, [id]);
       const list = after as never[];
@@ -159,7 +170,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
       const rowPlaceholders: string[] = [];
       for (const row of dataArr) {
         rowPlaceholders.push(`(${keys.map(() => '?').join(', ')})`);
-        keys.forEach(k => allValues.push((row as Record<string, unknown>)[k]));
+        keys.forEach(k => allValues.push(sanitizeParam((row as Record<string, unknown>)[k])));
       }
       await q(`INSERT INTO \`${table}\` (${cols}) VALUES ${rowPlaceholders.join(', ')}`, allValues);
       // MySQL doesn't support RETURNING *, so return input data as-is
@@ -171,7 +182,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
       if (keys.length === 0) throw new Error('No fields to upsert');
       const cols = keys.map(k => `\`${k}\``).join(', ');
       const placeholders = keys.map(() => '?').join(', ');
-      const values = keys.map(k => (data as Record<string, unknown>)[k]);
+      const values = keys.map(k => sanitizeParam((data as Record<string, unknown>)[k]));
       const updates = keys
         .filter(k => !conflictKeys?.includes(k))
         .map(k => `\`${k}\` = VALUES(\`${k}\`)`)
@@ -191,7 +202,7 @@ function buildMySQLClient(exec: mysql.Pool | mysql.PoolConnection): DBClient {
     },
 
     async query(sql, params) {
-      const [rows] = await q(sql, params);
+      const [rows] = await q(sql, params?.map(sanitizeParam));
       return rows as never[];
     },
 
