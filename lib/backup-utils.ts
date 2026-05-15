@@ -80,12 +80,12 @@ export async function createBackupFile(backupId: string, filename: string): Prom
             const value = row[col];
             if (value === null) return 'NULL';
             if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
-            if (typeof value === 'boolean') return value ? 'true' : 'false';
+            if (typeof value === 'boolean') return value ? '1' : '0';
             if (value instanceof Date) return `'${value.toISOString()}'`;
             return `'${value}'`;
           });
 
-          backupContent += `INSERT INTO ${tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
+          backupContent += `INSERT INTO ${tableName} (${columns.map(col => `\`${col}\``).join(', ')}) VALUES (${values.join(', ')});\n`;
         }
 
         backupContent += '\n';
