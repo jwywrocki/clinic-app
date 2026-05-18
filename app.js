@@ -5,8 +5,10 @@
 const http = require('http');
 const { parse } = require('url');
 const next = require('next');
+const { loadEnvConfig } = require('@next/env');
 
 const dev = process.env.NODE_ENV !== 'production';
+loadEnvConfig(process.cwd(), dev);
 const hostname = process.env.HOST || '0.0.0.0';
 const port = Number(process.env.PORT || 4000);
 
