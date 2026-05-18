@@ -28,9 +28,9 @@ function getPool(): mysql.Pool {
     const database = process.env.DB_DATABASE || '';
     const user = process.env.DB_USERNAME || '';
     const password = process.env.DB_PASSWORD || '';
+    const socketPath = process.env.DB_SOCKET || '';
     pool = mysql.createPool({
-      host,
-      port,
+      ...(socketPath ? { socketPath } : { host, port }),
       database,
       user,
       password,
